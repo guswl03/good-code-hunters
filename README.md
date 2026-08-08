@@ -18,6 +18,8 @@ Python `.py` 파일 하나를 **실행하지 않고** AST 기반으로 정적 �
 
 상세 제품 범위는 [PRD.md](PRD.md), 에이전트 작업 규칙은 [AGENTS.md](AGENTS.md), 역할·순서·완료 조건은 [plan.md](plan.md)를 따릅니다. 문서 간 우선순위는 `PRD.md → AGENTS.md → plan.md`입니다.
 
+팀원이 각자 개발한 기능을 검증하고 안전하게 합치는 절차는 [COLLABORATION.md](COLLABORATION.md)를 따릅니다.
+
 ## P0 탐지 규칙
 
 | 규칙 | 탐지할 좋은 보안 패턴 | 담당 |
