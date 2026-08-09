@@ -1,5 +1,9 @@
 # 착한코드검거단 (Good Code Hunter)
 
+<p align="center">
+  <img src="assets/branding/good-code-hunters-logo.png" alt="착한코드검거단 로고" width="520">
+</p>
+
 Python `.py` 파일 하나를 **실행하지 않고** AST 기반으로 정적 분석하여, 코드 안에서 확인 가능한 시큐어 코딩 패턴을 찾아 근거와 함께 보여주는 Windows 데스크톱 프로그램입니다.
 
 기획 참고: [악성코드검거단](https://akdan.co.kr/)의 반대 발상과 OpenAI의 [Harness engineering](https://openai.com/ko-KR/index/harness-engineering/)
