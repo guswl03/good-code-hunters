@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import tkinter as tk
 
 from goodcode.core.models import (
@@ -35,6 +36,19 @@ def make_result(status: str, findings: list[Finding] | None = None) -> ScanResul
     )
 
 
+def destroy_widget(widget: tk.Misc) -> None:
+    try:
+        widget.update_idletasks()
+    except tk.TclError:
+        pass
+    try:
+        widget.destroy()
+    except tk.TclError:
+        pass
+    tk._default_root = None
+    gc.collect()
+
+
 def test_result_view_shows_selected_finding_details() -> None:
     from goodcode.gui.result_view import ResultView
 
@@ -47,7 +61,7 @@ def test_result_view_shows_selected_finding_details() -> None:
 
     assert view.selected_finding() == finding
 
-    root.destroy()
+    destroy_widget(root)
 
 
 def test_main_window_moves_to_ready_after_file_selection() -> None:
@@ -61,7 +75,32 @@ def test_main_window_moves_to_ready_after_file_selection() -> None:
     assert str(window.scan_button["state"]) == "normal"
     assert "sample.py" in window.file_path_var.get()
 
-    window.destroy()
+    destroy_widget(window)
+
+
+def test_main_window_uses_scan_page_shell_structure() -> None:
+    from goodcode.gui.main_window import MainWindow
+
+    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
+    window.withdraw()
+
+    assert window.page_title_var.get() == "검거소"
+    assert list(window.nav_buttons) == ["홈", "검거소", "랭킹", "규칙집"]
+    assert str(window.nav_buttons["검거소"]["state"]) == "disabled"
+
+    destroy_widget(window)
+
+
+def test_main_window_loads_brand_logo_image() -> None:
+    from goodcode.gui.main_window import MainWindow
+
+    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
+    window.withdraw()
+
+    assert window.logo_label is not None
+    assert window.logo_image is not None
+
+    destroy_widget(window)
 
 
 def test_main_window_renders_good_patterns_found() -> None:
@@ -82,7 +121,7 @@ def test_main_window_renders_good_patterns_found() -> None:
     assert "1" in window.summary_var.get()
     assert str(window.export_button["state"]) == "normal"
 
-    window.destroy()
+    destroy_widget(window)
 
 
 def test_main_window_renders_empty_scan_result() -> None:
@@ -98,7 +137,7 @@ def test_main_window_renders_empty_scan_result() -> None:
     assert window.current_result().status == NO_GOOD_PATTERNS_FOUND
     assert str(window.export_button["state"]) == "normal"
 
-    window.destroy()
+    destroy_widget(window)
 
 
 def test_main_window_renders_parse_error() -> None:
@@ -120,7 +159,7 @@ def test_main_window_renders_parse_error() -> None:
     assert window.current_result().status == PARSE_ERROR
     assert str(window.export_button["state"]) == "disabled"
 
-    window.destroy()
+    destroy_widget(window)
 
 
 def test_main_window_renders_read_error() -> None:
@@ -142,7 +181,7 @@ def test_main_window_renders_read_error() -> None:
     assert window.current_result().status == READ_ERROR
     assert str(window.export_button["state"]) == "disabled"
 
-    window.destroy()
+    destroy_widget(window)
 
 
 def test_app_uses_real_scan_file() -> None:
