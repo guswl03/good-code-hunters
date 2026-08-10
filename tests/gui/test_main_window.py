@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+from pathlib import Path
 import tkinter as tk
 
 from goodcode.core.models import (
@@ -99,6 +100,23 @@ def test_main_window_loads_brand_logo_image() -> None:
 
     assert window.logo_label is not None
     assert window.logo_image is not None
+
+    destroy_widget(window)
+
+
+def test_main_window_loads_sample_file_for_preview() -> None:
+    from goodcode.gui.main_window import MainWindow
+
+    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
+    window.withdraw()
+
+    window._load_sample_file()
+
+    assert window.sample_button is not None
+    assert window._selected_file is not None
+    assert Path(window._selected_file).exists()
+    assert MainWindow.SAMPLE_FILE_NAME in window._selected_file
+    assert "good_code_hunters_sample.py" in window.file_path_var.get()
 
     destroy_widget(window)
 

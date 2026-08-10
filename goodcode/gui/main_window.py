@@ -5,6 +5,7 @@ import os
 import sys
 import tkinter as tk
 from pathlib import Path
+from tempfile import gettempdir
 from tkinter import filedialog, messagebox, ttk
 
 from goodcode.core.models import (
@@ -35,6 +36,33 @@ def _ensure_tk_library_paths() -> None:
 
 
 class MainWindow(tk.Tk):
+    SAMPLE_FILE_NAME = "good_code_hunters_sample.py"
+    SAMPLE_SOURCE = """import sqlite3
+import secrets
+import hashlib
+import hmac
+import subprocess
+import yaml
+
+conn = sqlite3.connect("app.db")
+cursor = conn.cursor()
+user_id = 7
+cursor.execute(
+    "SELECT * FROM users WHERE id = ?",
+    (user_id,),
+)
+
+token = secrets.token_urlsafe(32)
+password_hash = hashlib.pbkdf2_hmac("sha256", b"hunter-password", b"fixed-salt", 200_000)
+
+expected = b"good-code-hunters"
+provided = b"good-code-hunters"
+is_match = hmac.compare_digest(provided, expected)
+
+result = subprocess.run(["git", "status"], shell=False, check=False)
+config = yaml.safe_load("safe: true")
+"""
+
     def __init__(self, scan_service) -> None:
         _ensure_tk_library_paths()
         super().__init__()
@@ -59,6 +87,7 @@ class MainWindow(tk.Tk):
         self.nav_buttons: dict[str, ttk.Button] = {}
         self.logo_image: tk.PhotoImage | None = None
         self.logo_label: tk.Label | None = None
+        self.sample_button: ttk.Button | None = None
 
         self._configure_styles()
         self._build_layout()
@@ -93,7 +122,7 @@ class MainWindow(tk.Tk):
             categories = len({finding.category for finding in result.findings})
             self._set_state(
                 "SUCCESS_WITH_FINDINGS",
-                f"{len(result.findings)}개의 착한코드를 검거했습니다 · 카테고리 {categories}개",
+                f"{len(result.findings)}개의 착한코드를 확인했습니다 · 카테고리 {categories}개",
             )
             return
 
@@ -144,30 +173,108 @@ class MainWindow(tk.Tk):
         style = ttk.Style(self)
         style.theme_use("clam")
 
+        title_font = ("Pretendard", 24, "bold")
+        body_font = ("Pretendard", 10)
+        body_bold_font = ("Pretendard", 10, "bold")
+        small_font = ("Pretendard", 9)
+
         style.configure("Page.TFrame", background="#f4f7f6")
         style.configure("Topbar.TFrame", background="#ffffff")
         style.configure("Card.TFrame", background="#ffffff")
         style.configure("SoftCard.TFrame", background="#f7faf9")
         style.configure("InfoBar.TFrame", background="#eef3f2")
-        title_font = ("Pretendard", 24, "bold")
-        body_font = ("Pretendard", 10)
-        body_bold_font = ("Pretendard", 10, "bold")
-        small_font = ("Pretendard", 9)
-        style.configure("Brand.TLabel", background="#ffffff", foreground="#112431", font=("Pretendard", 14, "bold"))
-        style.configure("BrandSmall.TLabel", background="#ffffff", foreground="#7b8a97", font=("Pretendard", 8, "bold"))
-        style.configure("PageKicker.TLabel", background="#f4f7f6", foreground="#738391", font=small_font)
-        style.configure("Title.TLabel", background="#f4f7f6", foreground="#132632", font=title_font)
-        style.configure("Subtitle.TLabel", background="#f4f7f6", foreground="#5e6f7b", font=body_font)
-        style.configure("PanelTitle.TLabel", background="#ffffff", foreground="#112431", font=("Pretendard", 11, "bold"))
-        style.configure("PanelCount.TLabel", background="#ffffff", foreground="#7b8a97", font=small_font)
-        style.configure("FileBadge.TLabel", background="#ffffff", foreground="#5f7180", font=("Consolas", 9, "bold"))
-        style.configure("Body.TLabel", background="#ffffff", foreground="#4f6170", font=body_font)
-        style.configure("StrongBody.TLabel", background="#ffffff", foreground="#1d3141", font=body_bold_font)
-        style.configure("DetailTitle.TLabel", background="#ffffff", foreground="#172935", font=("Pretendard", 14, "bold"))
-        style.configure("SummaryStrip.TLabel", background="#f7faf9", foreground="#485d6c", font=small_font)
-        style.configure("StatusBadge.TLabel", background="#eef4f2", foreground="#5f756f", padding=(8, 4), font=small_font)
-        style.configure("Disclaimer.TLabel", background="#eef3f2", foreground="#667887", font=small_font)
-        style.configure("Footer.TLabel", background="#f4f7f6", foreground="#7b8a97", font=small_font)
+
+        style.configure(
+            "Brand.TLabel",
+            background="#ffffff",
+            foreground="#112431",
+            font=("Pretendard", 14, "bold"),
+        )
+        style.configure(
+            "BrandSmall.TLabel",
+            background="#ffffff",
+            foreground="#7b8a97",
+            font=("Pretendard", 8, "bold"),
+        )
+        style.configure(
+            "PageKicker.TLabel",
+            background="#f4f7f6",
+            foreground="#738391",
+            font=small_font,
+        )
+        style.configure(
+            "Title.TLabel",
+            background="#f4f7f6",
+            foreground="#132632",
+            font=title_font,
+        )
+        style.configure(
+            "Subtitle.TLabel",
+            background="#f4f7f6",
+            foreground="#5e6f7b",
+            font=body_font,
+        )
+        style.configure(
+            "PanelTitle.TLabel",
+            background="#ffffff",
+            foreground="#112431",
+            font=("Pretendard", 11, "bold"),
+        )
+        style.configure(
+            "PanelCount.TLabel",
+            background="#ffffff",
+            foreground="#7b8a97",
+            font=small_font,
+        )
+        style.configure(
+            "FileBadge.TLabel",
+            background="#ffffff",
+            foreground="#5f7180",
+            font=("Consolas", 9, "bold"),
+        )
+        style.configure(
+            "Body.TLabel",
+            background="#ffffff",
+            foreground="#4f6170",
+            font=body_font,
+        )
+        style.configure(
+            "StrongBody.TLabel",
+            background="#ffffff",
+            foreground="#1d3141",
+            font=body_bold_font,
+        )
+        style.configure(
+            "DetailTitle.TLabel",
+            background="#ffffff",
+            foreground="#172935",
+            font=("Pretendard", 14, "bold"),
+        )
+        style.configure(
+            "SummaryStrip.TLabel",
+            background="#f7faf9",
+            foreground="#485d6c",
+            font=small_font,
+        )
+        style.configure(
+            "StatusBadge.TLabel",
+            background="#eef4f2",
+            foreground="#5f756f",
+            padding=(8, 4),
+            font=small_font,
+        )
+        style.configure(
+            "Disclaimer.TLabel",
+            background="#eef3f2",
+            foreground="#667887",
+            font=small_font,
+        )
+        style.configure(
+            "Footer.TLabel",
+            background="#f4f7f6",
+            foreground="#7b8a97",
+            font=small_font,
+        )
 
         style.configure(
             "Topnav.TButton",
@@ -237,7 +344,11 @@ class MainWindow(tk.Tk):
             rowheight=42,
             font=body_font,
         )
-        style.map("Treeview", background=[("selected", "#dff3ee")], foreground=[("selected", "#0f7568")])
+        style.map(
+            "Treeview",
+            background=[("selected", "#dff3ee")],
+            foreground=[("selected", "#0f7568")],
+        )
         style.configure(
             "Treeview.Heading",
             background="#f7faf9",
@@ -276,8 +387,12 @@ class MainWindow(tk.Tk):
         brand.grid(row=0, column=0, sticky="w")
         self.logo_label = self._create_logo_label(brand)
         self.logo_label.grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 12))
-        ttk.Label(brand, text="착한코드검거단", style="Brand.TLabel").grid(row=0, column=1, sticky="w")
-        ttk.Label(brand, text="v0.1", style="BrandSmall.TLabel").grid(row=0, column=2, sticky="w", padx=(8, 0))
+        ttk.Label(brand, text="착한코드검거단", style="Brand.TLabel").grid(
+            row=0, column=1, sticky="w"
+        )
+        ttk.Label(brand, text="v0.1", style="BrandSmall.TLabel").grid(
+            row=0, column=2, sticky="w", padx=(8, 0)
+        )
 
         nav = ttk.Frame(topbar, style="Topbar.TFrame")
         nav.grid(row=0, column=1, sticky="w", padx=(28, 0))
@@ -307,6 +422,7 @@ class MainWindow(tk.Tk):
         active_button = self.nav_buttons.get("검거소")
         if not active_button:
             return
+
         active_button.update_idletasks()
         self.nav_underline.place(
             in_=active_button,
@@ -341,7 +457,9 @@ class MainWindow(tk.Tk):
         header = ttk.Frame(parent, padding=(6, 18, 6, 16), style="Page.TFrame")
         header.grid(row=1, column=0, sticky="ew")
         ttk.Label(header, text="홈 / 검거소", style="PageKicker.TLabel").pack(anchor="w")
-        ttk.Label(header, textvariable=self.page_title_var, style="Title.TLabel").pack(anchor="w", pady=(6, 4))
+        ttk.Label(header, textvariable=self.page_title_var, style="Title.TLabel").pack(
+            anchor="w", pady=(6, 4)
+        )
         ttk.Label(
             header,
             text="Python 파일 하나를 실행하지 않고 정적으로 분석해 확인 가능한 보안 패턴을 찾습니다.",
@@ -367,13 +485,33 @@ class MainWindow(tk.Tk):
         header = ttk.Frame(panel, style="Card.TFrame")
         header.grid(row=0, column=0, sticky="ew")
         ttk.Label(header, text="분석 대상", style="PanelTitle.TLabel").pack(side="left")
-        ttk.Label(header, text=".py · 단일 파일", style="PanelCount.TLabel").pack(side="right")
+
+        header_actions = ttk.Frame(header, style="Card.TFrame")
+        header_actions.pack(side="right")
+        self.sample_button = ttk.Button(
+            header_actions,
+            text="예시로 확인",
+            style="Ghost.TButton",
+            command=self._load_sample_file,
+        )
+        self.sample_button.pack(side="left", padx=(0, 8))
+        ttk.Label(
+            header_actions,
+            text=".py · 단일 파일",
+            style="PanelCount.TLabel",
+        ).pack(side="left")
 
         drop = ttk.Frame(panel, padding=16, style="SoftCard.TFrame")
         drop.grid(row=1, column=0, sticky="ew", pady=(14, 0))
         drop.columnconfigure(1, weight=1)
-        ttk.Label(drop, text=".py", style="FileBadge.TLabel").grid(row=0, column=0, rowspan=2, sticky="nw", padx=(0, 12))
-        ttk.Label(drop, text="Python 파일을 선택해주세요.", style="StrongBody.TLabel").grid(row=0, column=1, sticky="w")
+        ttk.Label(drop, text=".py", style="FileBadge.TLabel").grid(
+            row=0, column=0, rowspan=2, sticky="nw", padx=(0, 12)
+        )
+        ttk.Label(
+            drop,
+            text="Python 파일을 선택해주세요.",
+            style="StrongBody.TLabel",
+        ).grid(row=0, column=1, sticky="w")
         ttk.Label(
             drop,
             textvariable=self.file_hint_var,
@@ -381,9 +519,12 @@ class MainWindow(tk.Tk):
             wraplength=680,
             justify="left",
         ).grid(row=1, column=1, sticky="ew", pady=(4, 0))
-        ttk.Button(drop, text="파일 선택", style="Ghost.TButton", command=self._choose_file).grid(
-            row=0, column=2, rowspan=2, sticky="e", padx=(14, 0)
-        )
+        ttk.Button(
+            drop,
+            text="파일 선택",
+            style="Ghost.TButton",
+            command=self._choose_file,
+        ).grid(row=0, column=2, rowspan=2, sticky="e", padx=(14, 0))
 
         path_bar = ttk.Frame(panel, padding=(12, 10), style="SoftCard.TFrame")
         path_bar.grid(row=2, column=0, sticky="ew", pady=(10, 0))
@@ -406,9 +547,11 @@ class MainWindow(tk.Tk):
             style="Primary.TButton",
         )
         self.scan_button.grid(row=0, column=0, sticky="w")
-        ttk.Label(action_row, text="ast.parse() · AST 순회만 수행", style="PanelCount.TLabel").grid(
-            row=0, column=1, sticky="w", padx=(12, 0)
-        )
+        ttk.Label(
+            action_row,
+            text="ast.parse() · AST 순회만 수행",
+            style="PanelCount.TLabel",
+        ).grid(row=0, column=1, sticky="w", padx=(12, 0))
 
         status_row = ttk.Frame(panel, style="Card.TFrame")
         status_row.grid(row=4, column=0, sticky="ew", pady=(12, 0))
@@ -439,8 +582,14 @@ class MainWindow(tk.Tk):
 
         summary_head = ttk.Frame(summary_card, padding=(18, 14), style="Card.TFrame")
         summary_head.grid(row=0, column=0, sticky="ew")
-        ttk.Label(summary_head, text="검거 결과", style="PanelTitle.TLabel").pack(side="left")
-        self.findings_count_label = ttk.Label(summary_head, text="—", style="PanelCount.TLabel")
+        ttk.Label(summary_head, text="검거 결과", style="PanelTitle.TLabel").pack(
+            side="left"
+        )
+        self.findings_count_label = ttk.Label(
+            summary_head,
+            text="—",
+            style="PanelCount.TLabel",
+        )
         self.findings_count_label.pack(side="right")
 
         self.summary_strip = ttk.Label(
@@ -472,12 +621,14 @@ class MainWindow(tk.Tk):
         disclaimer = ttk.Frame(parent, padding=(14, 10), style="InfoBar.TFrame")
         disclaimer.grid(row=2, column=0, sticky="ew", padx=(0, 16), pady=(16, 0))
         disclaimer.columnconfigure(1, weight=1)
-        ttk.Label(disclaimer, text="안내", style="PanelCount.TLabel").grid(row=0, column=0, sticky="nw", padx=(0, 12))
+        ttk.Label(disclaimer, text="안내", style="PanelCount.TLabel").grid(
+            row=0, column=0, sticky="nw", padx=(0, 12)
+        )
         ttk.Label(
             disclaimer,
             text=(
                 "이 결과는 현재 규칙으로 확인된 긍정적 보안 패턴만 보여줍니다. "
-                "코드 전체에 취약점이 없음을 보증하지 않습니다."
+                "파일 전체에 취약점이 없음을 보증하지 않으며, 결과가 없다고 해서 코드가 취약하다는 뜻도 아닙니다."
             ),
             style="Disclaimer.TLabel",
             wraplength=830,
@@ -500,6 +651,11 @@ class MainWindow(tk.Tk):
         )
         if file_path:
             self.set_selected_file(file_path)
+
+    def _load_sample_file(self) -> None:
+        sample_path = Path(gettempdir()) / self.SAMPLE_FILE_NAME
+        sample_path.write_text(self.SAMPLE_SOURCE, encoding="utf-8")
+        self.set_selected_file(str(sample_path))
 
     def _show_placeholder(self, item: str) -> None:
         messagebox.showinfo(
