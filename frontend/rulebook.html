@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>규칙집 — 착한코드검거단</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wan2land/d2coding/d2coding-subset.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wan2land/d2coding/d2coding-ligature-subset.css" />
+<link rel="stylesheet" href="assets/gch.css" />
+<style>
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.rule{padding:0;overflow:hidden}
+.rule .top{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 12px}
+.rule .rid{font-size:12.5px;color:var(--primary-hi);font-weight:700}
+.rule.p1 .rid{color:var(--text-muted)}
+.rule h3{margin:2px 0 0;font-size:15px;font-weight:700;letter-spacing:-0.012em;line-height:1.45}
+.rule .en{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.rule .badge{margin-left:auto;flex:none;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.rule .meta{display:flex;gap:8px;align-items:center;padding:0 16px 12px;font-size:11.5px;color:var(--text-muted)}
+.rule .meta .sep{color:var(--border-strong)}
+.rule .why{margin:0;padding:12px 16px;font-size:12.5px;color:var(--text-secondary);line-height:1.75;border-top:1px solid var(--hair)}
+.codepair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.cx{background:var(--surface-subtle);padding:11px 14px;min-width:0}
+.cx .lbl{
+  font-size:10.5px;letter-spacing:.06em;margin-bottom:7px;display:inline-block;
+  border:1px solid currentColor;border-radius:3px;padding:0 5px;font-weight:700;
+}
+.cx.good .lbl{color:var(--success)}
+.cx.bad .lbl{color:var(--danger)}
+.cx pre{
+  margin:0;font-size:11.5px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word;color:var(--text);
+}
+.cx.bad pre{color:var(--text-secondary)}
+.rule .foot{padding:10px 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.policy{margin-top:16px}
+.policy .row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;padding:12px 16px;border-top:1px solid var(--hair);font-size:12.5px}
+.policy .row:first-of-type{border-top:0}
+.policy .row b{font-weight:700}
+.policy .row span{color:var(--text-secondary);line-height:1.7}
+@media (max-width:1000px){.rules{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.codepair{grid-template-columns:minmax(0,1fr)}.policy .row{grid-template-columns:minmax(0,1fr);gap:4px}}
+</style>
+</head>
+<body>
+
+<header class="topbar" data-od-id="topbar">
+  <a class="brand" href="index.html"><span class="glyph" aria-hidden="true">&gt;_</span>착한코드검거단 <small>v0.1</small></a>
+  <nav class="topnav" aria-label="주 메뉴">
+    <a href="index.html">홈</a>
+    <a href="scan.html">검거소</a>
+    <a href="ranking.html">랭킹</a>
+    <a href="rulebook.html" aria-current="page">규칙집</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="chip-env">엔진 <b>STATIC</b> 대상 코드 실행 없음</span>
+    <div class="avatar" title="검거단원">ME</div>
+  </div>
+</header>
+
+<main class="shell" data-od-id="rulebook-page">
+  <div class="pagehead">
+    <div>
+      <div class="crumb"><a href="index.html">홈</a> / 규칙집</div>
+      <h1>탐지 규칙집</h1>
+      <p>AST로 확실하게 판단할 수 있는 규칙만 사용합니다. 애매하면 탐지하지 않는 것이 기본 정책입니다.</p>
+    </div>
+    <div style="margin-left:auto"><a class="btn btn-primary" href="scan.html" data-od-id="cta-scan">내 코드로 확인하기</a></div>
+  </div>
+
+  <div class="filters" id="filters" role="group" aria-label="규칙 필터"></div>
+  <div class="rules" id="rules"></div>
+
+  <section class="panel policy" data-od-id="policy">
+    <div class="panel-h"><h2>판정 정책</h2><span class="sub">모든 규칙에 공통 적용</span></div>
+    <div class="row"><b>Positive Evidence First</b><span>“취약점이 없다 → 좋은 코드”로 판단하지 않습니다. 코드 안에 실제로 존재하는 긍정적 패턴이 있을 때만 탐지합니다.</span></div>
+    <div class="row"><b>Precision over Recall</b><span>많이 찾는 것보다 틀리지 않게 찾는 것을 우선합니다. 애매하면 탐지하지 않습니다.</span></div>
+    <div class="row"><b>No Execution</b><span>대상 코드는 import·exec·subprocess 등 어떤 방식으로도 실행하지 않습니다. 파일 읽기와 AST 순회만 수행합니다.</span></div>
+    <div class="row"><b>Deterministic</b><span>같은 파일은 항상 같은 결과를 만듭니다. 정렬 순서는 line ASC → column ASC → rule_id ASC 입니다.</span></div>
+    <div class="row"><b>No Guarantee</b><span>보안 점수나 SAFE / UNSAFE 인증을 제공하지 않으며, 파일 전체에 취약점이 없음을 보증하지 않습니다.</span></div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>착한코드검거단 MVP v0.1</span><span class="sep">·</span>
+    <a href="index.html">홈</a><a href="scan.html">검거소</a><a href="ranking.html">랭킹</a>
+  </footer>
+</main>
+
+<script src="assets/gch.js"></script>
+<script>
+(function () {
+  const ALL = [...GCH.RULES, ...GCH.P1_RULES];
+  let filter = "all";
+
+  function renderFilters() {
+    const counts = {};
+    ALL.forEach(r => counts[r.category] = (counts[r.category] || 0) + 1);
+    const items = [["all", "전체", ALL.length]];
+    Object.entries(GCH.CATEGORIES).forEach(([k, label]) => { if (counts[k]) items.push([k, label, counts[k]]); });
+    const box = document.getElementById("filters");
+    box.innerHTML = "";
+    items.forEach(([key, label, n]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "fchip";
+      b.setAttribute("aria-pressed", String(filter === key));
+      b.dataset.odId = "rule-filter-" + key;
+      b.innerHTML = `<span>${label}</span><span class="n">${n}</span>`;
+      b.addEventListener("click", () => { filter = key; renderFilters(); renderRules(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderRules() {
+    const rows = filter === "all" ? ALL : ALL.filter(r => r.category === filter);
+    document.getElementById("rules").innerHTML = rows.map(r => `
+      <article class="panel rule${r.tier === "P1" ? " p1" : ""}" data-od-id="rule-card-${r.id.toLowerCase()}">
+        <div class="top">
+          <div style="min-width:0">
+            <div class="rid">${r.id}</div>
+            <h3>${r.ko}</h3>
+            <div class="en">${r.name}</div>
+          </div>
+          <div class="badge">
+            <span class="tier ${r.tier === "P0" ? "t-pro" : "t-new"}">${r.tier === "P0" ? "가동중" : "구현 예정"}</span>
+          </div>
+        </div>
+        <div class="meta">
+          <span>category</span><span class="sep">·</span><span style="color:var(--text-secondary)">${r.category}</span>
+        </div>
+        <p class="why">${r.why}</p>
+        <div class="codepair">
+          <div class="cx good">
+            <div class="lbl">인정</div>
+            <pre>${GCH.escapeHtml(r.good)}</pre>
+          </div>
+          <div class="cx bad">
+            <div class="lbl">미인정</div>
+            <pre>${GCH.escapeHtml(r.bad)}</pre>
+          </div>
+        </div>
+        <div class="foot">${r.ref}</div>
+      </article>`).join("");
+  }
+
+  renderFilters();
+  renderRules();
+})();
+</script>
+</body>
+</html>

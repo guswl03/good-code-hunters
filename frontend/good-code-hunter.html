@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>착한코드검거단 — Good Code Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+<style>
+:root{
+  --bg:oklch(0.17 0.012 265);
+  --bg-deep:oklch(0.13 0.012 265);
+  --surface:oklch(0.22 0.015 265);
+  --surface-2:oklch(0.26 0.016 265);
+  --fg:oklch(0.96 0.004 265);
+  --muted:oklch(0.68 0.018 265);
+  --faint:oklch(0.54 0.018 265);
+  --border:oklch(0.31 0.016 265);
+  --accent:oklch(0.66 0.19 255);
+  --accent-hi:oklch(0.74 0.17 255);
+  --accent-dim:oklch(0.40 0.10 255);
+  --ok:oklch(0.76 0.16 155);
+  --warn:oklch(0.80 0.15 85);
+  --violet:oklch(0.72 0.15 305);
+  --font-display:"Space Grotesk","Pretendard Variable",sans-serif;
+  --font-body:"Pretendard Variable",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 520px at 78% -12%, oklch(0.30 0.10 262 / .40), transparent 62%),
+    radial-gradient(760px 420px at 4% 0%, oklch(0.28 0.07 300 / .26), transparent 60%),
+    var(--bg);
+  color:var(--fg);
+  font-family:var(--font-body);
+  font-size:14px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+button{font-family:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;border-radius:6px}
+
+/* ── Top bar ─────────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:28px;
+  height:60px;padding:0 28px;
+  background:oklch(0.15 0.012 265 / .86);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:-0.01em}
+.brand .glyph{
+  width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--accent),var(--violet));
+  font-family:var(--font-mono);font-size:13px;font-weight:700;color:oklch(0.15 0.01 265);
+}
+.brand small{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--faint);letter-spacing:.04em}
+.topnav{display:flex;gap:4px;margin-left:6px}
+.topnav a{
+  padding:7px 12px;border-radius:8px;text-decoration:none;color:var(--muted);
+  font-size:13px;font-weight:600;transition:background .14s,color .14s;
+}
+.topnav a:hover{background:var(--surface-2);color:var(--fg)}
+.topnav a[aria-current="page"]{color:var(--fg);background:oklch(0.30 0.05 258)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.env-chip{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--bg-deep);
+}
+.env-chip b{color:var(--ok);font-weight:500}
+
+/* ── Shell ───────────────────────────────── */
+.shell{max-width:1560px;margin:0 auto;padding:26px 28px 60px}
+.pagehead{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.pagehead h1{
+  font-family:var(--font-display);font-size:30px;font-weight:700;
+  letter-spacing:-0.02em;margin:0 0 4px;
+}
+.pagehead p{margin:0;color:var(--muted);max-width:52ch}
+.kicker{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent-hi);margin-bottom:8px;display:block;
+}
+.head-stats{display:flex;gap:10px;margin-left:auto}
+.head-stat{
+  border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+  padding:10px 16px;min-width:104px;
+}
+.head-stat b{display:block;font-family:var(--font-mono);font-size:20px;font-weight:700;line-height:1.2}
+.head-stat span{font-size:11px;color:var(--faint)}
+
+.grid{display:grid;grid-template-columns:236px minmax(0,1fr) 372px;gap:18px;align-items:start}
+
+/* ── Panels ──────────────────────────────── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.panel-h{
+  display:flex;align-items:center;gap:8px;
+  padding:13px 16px;border-bottom:1px solid var(--border);
+}
+.panel-h h2{margin:0;font-size:13px;font-weight:700;letter-spacing:-0.01em}
+.panel-h .count{
+  margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--faint);
+}
+
+/* ── Sidebar ─────────────────────────────── */
+.side{position:sticky;top:82px;display:flex;flex-direction:column;gap:14px}
+.filter-list{padding:8px}
+.filter-item{
+  display:flex;align-items:center;gap:9px;width:100%;
+  padding:8px 10px;border:0;border-radius:8px;background:transparent;text-align:left;
+  font-size:13px;color:var(--muted);transition:background .14s,color .14s;
+}
+.filter-item:hover{background:var(--surface-2);color:var(--fg)}
+.filter-item[aria-pressed="true"]{background:oklch(0.30 0.055 258);color:var(--fg);font-weight:600}
+.filter-item .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.75;flex:none}
+.filter-item .n{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--faint)}
+.filter-item[aria-pressed="true"] .n{color:var(--fg)}
+.rule-row{
+  display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:12px;color:var(--muted);
+  border-top:1px solid oklch(0.26 0.014 265);
+}
+.rule-row:first-of-type{border-top:0}
+.rule-row code{font-family:var(--font-mono);font-size:11px;color:var(--fg)}
+.rule-row .state{margin-left:auto;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em}
+.state.on{color:var(--ok)}
+.state.soon{color:var(--faint)}
+
+/* ── File bar ────────────────────────────── */
+.filebar{padding:16px}
+.filebar .label{font-size:11px;font-family:var(--font-mono);letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+.filebar .row{display:flex;gap:10px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.pathbox{
+  flex:1 1 320px;min-width:0;display:flex;align-items:center;gap:10px;
+  background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r);
+  padding:11px 13px;font-family:var(--font-mono);font-size:12.5px;
+}
+.pathbox .p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}
+.pathbox .p.empty{color:var(--faint)}
+.pathbox .size{margin-left:auto;flex:none;color:var(--faint);font-size:11px}
+
+.btn{
+  border-radius:var(--r);font-weight:600;font-size:13px;
+  padding:11px 16px;min-height:44px;display:inline-flex;align-items:center;gap:8px;
+  transition:background .15s,border-color .15s,transform .05s;
+}
+.btn-primary{
+  background:var(--accent);color:oklch(0.14 0.02 265);border:1px solid var(--accent);
+}
+.btn-primary:hover{background:var(--accent-hi);border-color:var(--accent-hi)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary:disabled{background:var(--accent-dim);border-color:var(--accent-dim);color:oklch(0.72 0.03 265);cursor:not-allowed}
+.btn-ghost{
+  background:var(--surface-2);border:1px solid var(--border);color:var(--fg);
+}
+.btn-ghost:hover{background:oklch(0.32 0.02 265);border-color:oklch(0.42 0.02 265)}
+.btn-ghost:disabled{color:var(--faint);background:var(--surface);cursor:not-allowed}
+.btn-text{
+  background:transparent;border:1px solid transparent;color:var(--muted);
+  padding:9px 12px;min-height:40px;font-size:12.5px;
+}
+.btn-text:hover{background:var(--surface-2);color:var(--fg)}
+
+.scanrow{
+  display:flex;align-items:center;gap:12px;margin-top:14px;
+  padding-top:14px;border-top:1px dashed var(--border);flex-wrap:wrap;
+}
+.scanrow .hint{font-size:12px;color:var(--faint)}
+
+/* ── Status strip ────────────────────────── */
+.status{
+  display:flex;align-items:center;gap:11px;margin:14px 0 0;
+  padding:12px 14px;border-radius:var(--r);
+  background:var(--bg-deep);border:1px solid var(--border);font-size:13px;
+}
+.status .tag{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+  padding:3px 8px;border-radius:5px;flex:none;
+}
+.tag-empty{background:oklch(0.30 0.014 265);color:var(--muted)}
+.tag-ready{background:oklch(0.34 0.07 258);color:oklch(0.90 0.05 258)}
+.tag-scan{background:oklch(0.36 0.10 300);color:oklch(0.92 0.06 300)}
+.tag-ok{background:oklch(0.34 0.10 155);color:oklch(0.92 0.10 155)}
+.tag-none{background:oklch(0.34 0.06 85);color:oklch(0.93 0.08 85)}
+.tag-err{background:oklch(0.34 0.10 25);color:oklch(0.93 0.09 25)}
+.status .msg{color:var(--muted)}
+.status .msg b{color:var(--fg);font-weight:600}
+
+/* ── Summary ─────────────────────────────── */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:14px;overflow:hidden;margin-top:16px}
+.summary .cell{background:var(--surface);padding:16px 18px}
+.summary .cell .k{font-size:11px;color:var(--faint);font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
+.summary .cell .v{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.25;margin-top:4px}
+.summary .cell .v em{font-style:normal;font-size:13px;color:var(--muted);font-family:var(--font-body);font-weight:500;margin-left:5px}
+.catbar{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
+.catbar span{
+  font-size:10.5px;font-family:var(--font-mono);padding:2px 7px;border-radius:5px;
+  background:var(--surface-2);color:var(--muted);border:1px solid var(--border);
+}
+
+/* ── Findings table ──────────────────────── */
+.findings{margin-top:16px}
+.thead,.frow{
+  display:grid;grid-template-columns:104px minmax(0,1fr) 168px 62px;
+  gap:14px;align-items:center;padding:11px 16px;
+}
+.thead{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);border-bottom:1px solid var(--border);
+}
+.thead .r,.frow .r{text-align:right}
+.frow{
+  width:100%;border:0;border-top:1px solid oklch(0.26 0.014 265);background:transparent;
+  text-align:left;font-size:13.5px;color:var(--fg);transition:background .13s;
+  position:relative;
+}
+.frow:first-of-type{border-top:0}
+.frow:hover{background:oklch(0.27 0.017 265)}
+.frow[aria-selected="true"]{background:oklch(0.30 0.055 258)}
+.frow[aria-selected="true"]::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent-hi);
+}
+.frow .rid{font-family:var(--font-mono);font-size:12px;color:var(--accent-hi);font-weight:500}
+.frow[aria-selected="true"] .rid{color:oklch(0.88 0.10 255)}
+.frow .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.frow .name i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis}
+.frow[aria-selected="true"] .name i{color:oklch(0.84 0.03 258)}
+.frow .cat{font-size:11px}
+.chip{
+  display:inline-block;font-family:var(--font-mono);font-size:10.5px;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:var(--bg-deep);color:var(--muted);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.frow .ln{font-family:var(--font-mono);font-size:12.5px;color:var(--muted)}
+.frow[aria-selected="true"] .ln,.frow[aria-selected="true"] .chip{color:oklch(0.90 0.02 258)}
+
+.emptystate{padding:44px 24px;text-align:center;color:var(--muted)}
+.emptystate .big{font-family:var(--font-display);font-size:16px;color:var(--fg);margin-bottom:6px}
+.emptystate p{margin:0 auto;max-width:44ch;font-size:13px}
+.emptystate .mark{
+  width:44px;height:44px;margin:0 auto 14px;border-radius:12px;display:grid;place-items:center;
+  border:1px solid var(--border);background:var(--bg-deep);font-family:var(--font-mono);color:var(--faint);
+}
+
+/* ── Detail ──────────────────────────────── */
+.detail{position:sticky;top:82px;display:flex;flex-direction:column;max-height:calc(100vh - 108px)}
+.detail-body{overflow-y:auto;padding:18px 18px 20px}
+.detail-body::-webkit-scrollbar{width:9px}
+.detail-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:9px}
+.d-id{font-family:var(--font-mono);font-size:12px;color:var(--accent-hi);letter-spacing:.02em}
+.d-title{font-family:var(--font-display);font-size:19px;font-weight:700;letter-spacing:-0.015em;margin:5px 0 12px;line-height:1.35}
+.d-meta{display:grid;grid-template-columns:74px minmax(0,1fr);gap:6px 12px;font-size:12.5px;margin-bottom:16px}
+.d-meta dt{color:var(--faint);font-family:var(--font-mono);font-size:11px;letter-spacing:.04em}
+.d-meta dd{margin:0;color:var(--fg);word-break:break-all}
+.code{
+  background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;margin-bottom:16px;
+}
+.code .cap{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);font-size:10.5px;color:var(--faint);letter-spacing:.06em;
+}
+.code pre{margin:0;padding:12px 0;overflow-x:auto;font-family:var(--font-mono);font-size:12px;line-height:1.75}
+.code .l{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;padding:0 12px;white-space:pre}
+.code .l .no{color:oklch(0.44 0.015 265);text-align:right;user-select:none}
+.code .l.hit{background:oklch(0.30 0.055 258)}
+.code .l.hit .no{color:var(--accent-hi)}
+.d-why{
+  border-left:0;background:var(--bg-deep);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;margin-bottom:14px;
+}
+.d-why h4{margin:0 0 7px;font-size:12px;color:var(--ok);font-family:var(--font-mono);letter-spacing:.06em;font-weight:500}
+.d-why p{margin:0;font-size:13px;color:oklch(0.88 0.01 265);line-height:1.68}
+.d-ref{font-size:12px;color:var(--faint);line-height:1.6}
+.d-ref b{color:var(--muted);font-weight:600}
+.detail-foot{padding:13px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.detail-foot .note{font-size:11px;color:var(--faint);margin-left:auto;text-align:right;line-height:1.45}
+
+/* ── Disclaimer ──────────────────────────── */
+.disclaimer{
+  margin-top:20px;padding:14px 18px;border-radius:var(--r);
+  border:1px solid var(--border);background:oklch(0.20 0.014 265);
+  font-size:12.5px;color:var(--muted);display:flex;gap:11px;align-items:flex-start;
+}
+.disclaimer b{color:var(--fg);font-weight:600}
+.disclaimer .ic{font-family:var(--font-mono);color:var(--warn);flex:none}
+
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);
+  padding:11px 18px;font-size:13px;box-shadow:0 12px 32px oklch(0.10 0.01 265 / .6);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1240px){
+  .grid{grid-template-columns:minmax(0,1fr) 340px}
+  .side{grid-column:1 / -1;position:static;flex-direction:row;flex-wrap:wrap}
+  .side .panel{flex:1 1 300px}
+  .detail{position:static;max-height:none}
+}
+@media (max-width:820px){
+  .shell{padding:20px 16px 48px}
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .topnav{display:none}
+  .head-stats{margin-left:0;width:100%}
+  .summary{grid-template-columns:1fr}
+  .thead{display:none}
+  .frow{grid-template-columns:minmax(0,1fr) 62px;gap:6px 12px}
+  .frow .cat{grid-column:1 / -1}
+  .detail{max-height:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar" data-od-id="topbar">
+  <div class="brand" data-od-id="brand">
+    <span class="glyph" aria-hidden="true">&gt;_</span>
+    착한코드검거단 <small>v0.1 MVP</small>
+  </div>
+  <nav class="topnav" data-od-id="topnav" aria-label="주 메뉴">
+    <a href="#" aria-current="page">검거소</a>
+    <a href="#rulebook">규칙집</a>
+    <a href="#report">리포트</a>
+    <a href="#docs">문서</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="env-chip" data-od-id="engine-chip">엔진 <b>AST-STATIC</b> · 실행 없음</span>
+    <button class="btn-text" type="button" data-od-id="nav-docs">사용 가이드</button>
+  </div>
+</header>
+
+<main class="shell">
+  <div class="pagehead" data-od-id="pagehead">
+    <div>
+      <span class="kicker">POSITIVE SECURITY EVIDENCE</span>
+      <h1>착한코드 검거소</h1>
+      <p>Python 소스를 <b>실행하지 않고</b> AST로만 읽어, 코드 안에 실제로 존재하는 좋은 보안 패턴을 근거 코드와 함께 찾아냅니다.</p>
+    </div>
+    <div class="head-stats" data-od-id="head-stats">
+      <div class="head-stat"><b id="stat-rules">6</b><span>가동 규칙 (P0)</span></div>
+      <div class="head-stat"><b id="stat-runs">0</b><span>이번 세션 검거</span></div>
+      <div class="head-stat"><b>0</b><span>대상 코드 실행</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- ── Sidebar ───────────────────────── -->
+    <aside class="side" data-od-id="sidebar">
+      <section class="panel" data-od-id="category-filter">
+        <div class="panel-h"><h2>카테고리</h2><span class="count" id="filter-count">전체</span></div>
+        <div class="filter-list" id="filters" role="group" aria-label="카테고리 필터"></div>
+      </section>
+
+      <section class="panel" id="rulebook" data-od-id="rulebook">
+        <div class="panel-h"><h2>탐지 규칙집</h2><span class="count">P0 6 · P1 2</span></div>
+        <div>
+          <div class="rule-row"><code>GOOD001</code> Parameterized SQL<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD002</code> Secure Random<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD003</code> Password KDF<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD004</code> Constant-Time<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD005</code> Safe Subprocess<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD006</code> Safe YAML<span class="state on">ON</span></div>
+          <div class="rule-row"><code>GOOD007</code> Secure TLS<span class="state soon">P1</span></div>
+          <div class="rule-row"><code>GOOD008</code> Path Traversal<span class="state soon">P1</span></div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ── Center column ─────────────────── -->
+    <div data-od-id="main-column">
+      <section class="panel" data-od-id="file-panel">
+        <div class="filebar">
+          <span class="label">분석 파일</span>
+          <div class="row">
+            <div class="pathbox" data-od-id="file-path">
+              <span class="p empty" id="path-text">Python 파일(.py)을 선택해주세요</span>
+              <span class="size" id="path-size"></span>
+            </div>
+            <button class="btn btn-ghost" type="button" id="btn-pick" data-od-id="btn-pick">파일 선택</button>
+            <input type="file" id="file-input" accept=".py" hidden />
+          </div>
+          <div class="scanrow">
+            <button class="btn btn-primary" type="button" id="btn-scan" data-od-id="btn-scan" disabled>착한코드 검거 시작</button>
+            <button class="btn-text" type="button" id="btn-sample" data-od-id="btn-sample">샘플 코드로 둘러보기</button>
+            <span class="hint">선택한 파일은 읽기 · <code style="font-family:var(--font-mono)">ast.parse()</code> · AST 순회만 수행합니다.</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="status" id="status" data-od-id="status-strip">
+        <span class="tag tag-empty" id="status-tag">EMPTY</span>
+        <span class="msg" id="status-msg">아직 파일이 선택되지 않았습니다.</span>
+      </div>
+
+      <section class="summary" id="summary" data-od-id="summary" hidden>
+        <div class="cell">
+          <div class="k">검거 건수</div>
+          <div class="v"><span id="sum-count">0</span><em>건</em></div>
+        </div>
+        <div class="cell">
+          <div class="k">발견 카테고리</div>
+          <div class="v"><span id="sum-cats">0</span><em>개</em></div>
+          <div class="catbar" id="sum-catbar"></div>
+        </div>
+        <div class="cell">
+          <div class="k">분석 라인 / 소요</div>
+          <div class="v" style="font-size:20px"><span id="sum-lines">0</span><em>lines · <span id="sum-ms">0</span>ms</em></div>
+        </div>
+      </section>
+
+      <section class="panel findings" data-od-id="findings-panel">
+        <div class="panel-h">
+          <h2>검거 목록</h2>
+          <span class="count" id="findings-count">—</span>
+        </div>
+        <div class="thead" aria-hidden="true">
+          <span>Rule ID</span><span>규칙</span><span>Category</span><span class="r">Line</span>
+        </div>
+        <div id="findings-list" role="listbox" aria-label="탐지 결과 목록"></div>
+      </section>
+
+      <div class="disclaimer" data-od-id="disclaimer">
+        <span class="ic" aria-hidden="true">[!]</span>
+        <span><b>이 도구는 발견된 긍정적인 보안 패턴만 보여줍니다.</b> 코드 전체에 취약점이 없음을 보증하지 않으며, 결과가 없다고 해서 코드가 취약하다는 뜻도 아닙니다.<br />
+        <span style="color:var(--faint)">※ 이 화면은 UI 프로토타입입니다. 실제 제품의 탐지 엔진은 Python <code style="font-family:var(--font-mono)">ast</code> 모듈 기반이며, 브라우저 데모에서는 동일한 Finding 스키마를 유지한 채 구문 단위 스캐너로 근사 동작합니다.</span></span>
+      </div>
+    </div>
+
+    <!-- ── Detail ────────────────────────── -->
+    <aside class="panel detail" id="report" data-od-id="detail-panel">
+      <div class="panel-h"><h2>상세 정보</h2><span class="count" id="detail-index">—</span></div>
+      <div class="detail-body" id="detail-body">
+        <div class="emptystate" data-od-id="detail-empty">
+          <div class="mark" aria-hidden="true">{ }</div>
+          <div class="big">선택된 항목 없음</div>
+          <p>검거 목록에서 항목을 선택하면 라인 번호, 근거 코드, 왜 좋은 코드인지에 대한 설명이 여기에 표시됩니다.</p>
+        </div>
+      </div>
+      <div class="detail-foot">
+        <button class="btn btn-ghost" type="button" id="btn-export" data-od-id="btn-export" disabled>JSON 결과 저장</button>
+        <span class="note">ScanResult 스키마 v0.1<br />line ASC → col ASC → rule ASC</span>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ────────────────────────────────────────────────────────────
+   착한코드검거단 — 브라우저 프로토타입 엔진
+   ※ 실제 제품은 Python ast 모듈 기반. 여기서는 GUI/UX 검증을 위해
+     동일한 Finding 스키마를 유지한 채 라인 스캐너로 근사 구현한다.
+   ──────────────────────────────────────────────────────────── */
+
+const CATEGORIES = {
+  "injection-prevention": "인젝션 방어",
+  "cryptography": "암호학",
+  "credential-protection": "자격증명 보호",
+  "side-channel-defense": "부채널 방어",
+  "command-execution": "명령 실행",
+  "deserialization": "역직렬화"
+};
+
+const RULES = [
+  {
+    id: "GOOD001",
+    name: "Parameterized SQL Query",
+    ko: "쿼리와 파라미터를 분리한 SQL 실행",
+    category: "injection-prevention",
+    why: "SQL 문자열과 사용자 입력을 분리해 드라이버가 값을 바인딩하도록 맡기고 있습니다. 문자열 결합이나 f-string으로 쿼리를 조립하지 않기 때문에 입력값이 SQL 구문으로 해석될 여지가 없습니다.",
+    ref: "CWE-89 · OWASP Top 10 A03:2021 Injection",
+    test(stmt) {
+      if (!/\.\s*execute(many)?\s*\(/.test(stmt)) return false;
+      if (/f["']|%\s*\(|\+\s*(str\(|[a-zA-Z_])|\.format\s*\(/.test(stmt)) return false;
+      const hasPlaceholder = /["'][^"']*(\?|%s|:[a-zA-Z_]\w*)[^"']*["']/.test(stmt);
+      const hasParamArg = /["']\s*,\s*[\(\[\{a-zA-Z_]/.test(stmt);
+      return hasPlaceholder && hasParamArg;
+    }
+  },
+  {
+    id: "GOOD002",
+    name: "Cryptographically Secure Randomness",
+    ko: "보안용 난수에 secrets 모듈 사용",
+    category: "cryptography",
+    why: "예측 가능한 random 모듈 대신 OS의 CSPRNG를 사용하는 secrets API로 토큰을 만들고 있습니다. 세션 토큰·비밀번호 재설정 링크처럼 추측되면 안 되는 값에 적합한 선택입니다.",
+    ref: "CWE-338 · Python docs: secrets — Generate secure tokens",
+    test: (s) => /\bsecrets\s*\.\s*(token_bytes|token_hex|token_urlsafe|randbelow|choice|SystemRandom)\b/.test(s)
+  },
+  {
+    id: "GOOD003",
+    name: "Password Hashing / KDF",
+    ko: "비밀번호에 전용 해시·KDF 사용",
+    category: "credential-protection",
+    why: "비밀번호를 md5/sha1 같은 범용 고속 해시가 아니라 의도적으로 느린 KDF로 처리하고 있습니다. 솔트와 반복 횟수를 통해 유출 시 대량 크래킹 비용을 크게 끌어올립니다.",
+    ref: "CWE-916 · OWASP Password Storage Cheat Sheet",
+    test: (s) => /\bhashlib\s*\.\s*(pbkdf2_hmac|scrypt)\b|\bbcrypt\s*\.\s*(hashpw|kdf)\b|PasswordHasher\s*\([^)]*\)\s*\.\s*hash\b|\bph\s*\.\s*hash\s*\(/.test(s)
+  },
+  {
+    id: "GOOD004",
+    name: "Constant-Time Secret Comparison",
+    ko: "비밀값 비교에 상수 시간 API 사용",
+    category: "side-channel-defense",
+    why: "토큰·서명값을 == 로 비교하면 일치하는 앞부분 길이에 따라 응답 시간이 달라져 값이 한 바이트씩 추측될 수 있습니다. compare_digest는 길이와 무관하게 일정한 시간으로 비교합니다.",
+    ref: "CWE-208 · Python docs: hmac.compare_digest",
+    test: (s) => /\b(hmac|secrets)\s*\.\s*compare_digest\s*\(/.test(s)
+  },
+  {
+    id: "GOOD005",
+    name: "Safer Subprocess Invocation",
+    ko: "인자 리스트로 전달하는 subprocess 호출",
+    category: "command-execution",
+    why: "명령을 하나의 셸 문자열이 아니라 인자 리스트로 넘기고 shell=True를 쓰지 않았습니다. 세미콜론·파이프·백틱 같은 셸 메타문자가 해석되지 않으므로 명령 주입 경로가 차단됩니다.",
+    ref: "CWE-78 · Python docs: subprocess Security Considerations",
+    test(stmt) {
+      if (!/\bsubprocess\s*\.\s*(run|Popen|check_output|check_call)\s*\(/.test(stmt)) return false;
+      if (/shell\s*=\s*True/.test(stmt)) return false;
+      return /\(\s*\[|\(\s*\(/.test(stmt.replace(/\bsubprocess\s*\.\s*\w+\s*/, "sub"));
+    }
+  },
+  {
+    id: "GOOD006",
+    name: "Safe YAML Deserialization",
+    ko: "안전한 로더로 YAML 역직렬화",
+    category: "deserialization",
+    why: "임의의 Python 객체를 생성할 수 있는 yaml.load(Loader=Loader) 대신 안전한 로더를 사용했습니다. 신뢰할 수 없는 YAML이 들어와도 객체 생성을 통한 코드 실행으로 이어지지 않습니다.",
+    ref: "CWE-502 · PyYAML: loading YAML safely",
+    test: (s) => /\byaml\s*\.\s*safe_load(_all)?\s*\(/.test(s) || /\byaml\s*\.\s*load\s*\([^)]*Loader\s*=\s*(yaml\s*\.\s*)?(SafeLoader|CSafeLoader)/.test(s)
+  }
+];
+
+const SAMPLE_NAME = "payment_service.py";
+const SAMPLE_SRC = `"""결제 서비스 — 사용자 인증 및 정산 처리."""
+
+import hashlib
+import hmac
+import secrets
+import sqlite3
+import subprocess
+
+import yaml
+
+CONFIG_PATH = "config/payment.yml"
+
+
+def load_config(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as fp:
+        return yaml.safe_load(fp.read())
+
+
+def find_user(conn: sqlite3.Connection, user_id: str):
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, email, pw_hash, salt FROM users WHERE id = ?",
+        (user_id,),
+    )
+    return cursor.fetchone()
+
+
+def issue_session_token() -> str:
+    """세션 토큰 발급."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_password(password: str) -> tuple[bytes, bytes]:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        390_000,
+    )
+    return digest, salt
+
+
+def verify_webhook(payload: bytes, signature: str, secret: bytes) -> bool:
+    expected = hmac.new(secret, payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature, expected)
+
+
+def sync_ledger(branch: str) -> int:
+    result = subprocess.run(
+        ["git", "pull", "--ff-only", "origin", branch],
+        shell=False,
+        check=True,
+        capture_output=True,
+    )
+    return result.returncode
+
+
+def audit_log(entries: list[str]) -> None:
+    for entry in entries:
+        print(f"[audit] {entry}")
+`;
+
+/* ── State ─────────────────────────────── */
+const state = {
+  fileName: null,
+  filePath: null,
+  fileSize: 0,
+  source: null,
+  findings: [],
+  selected: null,
+  filter: "all",
+  scanMs: 0,
+  runs: 0
+};
+
+const $ = (id) => document.getElementById(id);
+
+/* ── Scanner ───────────────────────────── */
+function logicalStatement(lines, i) {
+  // 괄호가 닫힐 때까지 최대 12줄을 하나의 논리 구문으로 합친다.
+  let depth = 0, out = "";
+  for (let k = i; k < Math.min(lines.length, i + 12); k++) {
+    const line = lines[k].split("#")[0];
+    out += line + " ";
+    for (const ch of line) {
+      if ("([{".includes(ch)) depth++;
+      else if (")]}".includes(ch)) depth--;
+    }
+    if (k > i && depth <= 0) break;
+    if (k === i && depth <= 0) break;
+  }
+  return out;
+}
+
+function scan(source) {
+  const lines = source.split(/\r?\n/);
+  const findings = [];
+  const seen = new Set();
+
+  // 구문 오류의 아주 얕은 근사 검사 (프로토타입 한정)
+  const openers = (source.match(/[\(\[\{]/g) || []).length;
+  const closers = (source.match(/[\)\]\}]/g) || []).length;
+  if (openers - closers > 2) {
+    const err = new Error("괄호가 닫히지 않은 것으로 보입니다. 파일의 문법을 확인해주세요.");
+    err.userFacing = true;
+    throw err;
+  }
+
+  lines.forEach((raw, idx) => {
+    const codeOnly = raw.split("#")[0];
+    if (!codeOnly.trim()) return;
+    const stmt = logicalStatement(lines, idx);
+    for (const rule of RULES) {
+      if (!rule.test(stmt) && !rule.test(codeOnly)) continue;
+      const key = rule.id + ":" + idx;
+      // 여러 줄 구문의 첫 줄에서만 잡히도록: 이전 줄이 같은 구문의 일부면 skip
+      const prev = idx > 0 ? lines[idx - 1].split("#")[0] : "";
+      const contOfPrev = /[\(\[\{,]\s*$/.test(prev) && !rule.test(codeOnly);
+      if (contOfPrev) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      findings.push({
+        rule_id: rule.id,
+        rule_name: rule.name,
+        rule_name_ko: rule.ko,
+        category: rule.category,
+        line: idx + 1,
+        column: raw.length - raw.trimStart().length,
+        evidence: raw.trim(),
+        explanation: rule.why,
+        reference: rule.ref
+      });
+    }
+  });
+
+  findings.sort((a, b) => a.line - b.line || a.column - b.column || a.rule_id.localeCompare(b.rule_id));
+  return { findings, lineCount: lines.length };
+}
+
+/* ── Render ────────────────────────────── */
+function setStatus(kind, msg) {
+  const tag = $("status-tag"), el = $("status-msg");
+  const map = {
+    EMPTY: ["tag-empty", "EMPTY"], READY: ["tag-ready", "READY"], SCANNING: ["tag-scan", "SCANNING"],
+    FOUND: ["tag-ok", "SUCCESS"], NONE: ["tag-none", "SUCCESS_EMPTY"], ERROR: ["tag-err", "ERROR"]
+  };
+  const [cls, label] = map[kind];
+  tag.className = "tag " + cls;
+  tag.textContent = label;
+  el.innerHTML = msg;
+}
+
+function renderFilters() {
+  const box = $("filters");
+  const counts = {};
+  state.findings.forEach(f => counts[f.category] = (counts[f.category] || 0) + 1);
+  const items = [["all", "전체 결과", state.findings.length]];
+  Object.entries(CATEGORIES).forEach(([k, label]) => items.push([k, label, counts[k] || 0]));
+
+  box.innerHTML = "";
+  items.forEach(([key, label, n]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "filter-item";
+    b.setAttribute("aria-pressed", String(state.filter === key));
+    b.dataset.odId = "filter-" + key;
+    b.innerHTML = `<span class="dot"></span><span>${label}</span><span class="n">${n}</span>`;
+    b.disabled = false;
+    b.addEventListener("click", () => { state.filter = key; renderFilters(); renderFindings(); });
+    box.appendChild(b);
+  });
+  $("filter-count").textContent = state.filter === "all" ? "전체" : CATEGORIES[state.filter];
+}
+
+function visibleFindings() {
+  return state.filter === "all" ? state.findings : state.findings.filter(f => f.category === state.filter);
+}
+
+function renderFindings() {
+  const list = $("findings-list");
+  const rows = visibleFindings();
+  $("findings-count").textContent = state.findings.length ? `${rows.length} / ${state.findings.length}건` : "—";
+  list.innerHTML = "";
+
+  if (!state.findings.length) {
+    list.innerHTML = `<div class="emptystate" data-od-id="findings-empty">
+      <div class="mark" aria-hidden="true">∅</div>
+      <div class="big">${state.source ? "확인된 착한코드가 없습니다" : "아직 검거 기록이 없습니다"}</div>
+      <p>${state.source
+        ? "현재 규칙(P0 6종)으로 확인할 수 있는 긍정적 보안 패턴을 찾지 못했습니다. 이 결과가 코드가 취약하다는 뜻은 아닙니다."
+        : "Python 파일을 선택하고 <b>착한코드 검거 시작</b>을 누르면 결과가 여기에 표시됩니다."}</p></div>`;
+    return;
+  }
+  if (!rows.length) {
+    list.innerHTML = `<div class="emptystate"><div class="mark" aria-hidden="true">∅</div>
+      <div class="big">이 카테고리의 결과가 없습니다</div>
+      <p>왼쪽에서 <b>전체 결과</b>를 선택하면 검거된 ${state.findings.length}건을 모두 볼 수 있습니다.</p></div>`;
+    return;
+  }
+
+  rows.forEach((f) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "frow";
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", String(state.selected === f));
+    btn.dataset.odId = "finding-row-" + f.rule_id.toLowerCase() + "-" + f.line;
+    btn.innerHTML = `
+      <span class="rid">${f.rule_id}</span>
+      <span class="name">${f.rule_name}<i>${f.rule_name_ko}</i></span>
+      <span class="cat"><span class="chip">${CATEGORIES[f.category]}</span></span>
+      <span class="ln r">${f.line}</span>`;
+    btn.addEventListener("click", () => { state.selected = f; renderFindings(); renderDetail(); });
+    list.appendChild(btn);
+  });
+}
+
+function renderDetail() {
+  const body = $("detail-body");
+  const f = state.selected;
+  if (!f) {
+    $("detail-index").textContent = "—";
+    body.innerHTML = `<div class="emptystate"><div class="mark" aria-hidden="true">{ }</div>
+      <div class="big">선택된 항목 없음</div>
+      <p>검거 목록에서 항목을 선택하면 라인 번호, 근거 코드, 왜 좋은 코드인지에 대한 설명이 여기에 표시됩니다.</p></div>`;
+    return;
+  }
+  const idx = state.findings.indexOf(f) + 1;
+  $("detail-index").textContent = `${idx} / ${state.findings.length}`;
+
+  const lines = state.source.split(/\r?\n/);
+  const from = Math.max(0, f.line - 3), to = Math.min(lines.length, f.line + 2);
+  let snippet = "";
+  for (let i = from; i < to; i++) {
+    const hit = i + 1 === f.line;
+    snippet += `<div class="l${hit ? " hit" : ""}"><span class="no">${i + 1}</span><span>${escapeHtml(lines[i]) || " "}</span></div>`;
+  }
+
+  body.innerHTML = `
+    <div class="d-id">${f.rule_id}</div>
+    <div class="d-title">${f.rule_name_ko}</div>
+    <dl class="d-meta">
+      <dt>RULE</dt><dd>${f.rule_name}</dd>
+      <dt>CATEGORY</dt><dd>${CATEGORIES[f.category]} <span style="color:var(--faint);font-family:var(--font-mono);font-size:11px">${f.category}</span></dd>
+      <dt>FILE</dt><dd>${escapeHtml(state.fileName)}</dd>
+      <dt>POSITION</dt><dd>line ${f.line} · col ${f.column}</dd>
+    </dl>
+    <div class="code" data-od-id="detail-code">
+      <div class="cap">근거 코드 · ${escapeHtml(state.fileName)}:${f.line}</div>
+      <pre>${snippet}</pre>
+    </div>
+    <div class="d-why" data-od-id="detail-why">
+      <h4>// 왜 좋은 코드인가</h4>
+      <p>${f.explanation}</p>
+    </div>
+    <p class="d-ref"><b>참고</b> · ${f.reference}</p>`;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderSummary(show) {
+  $("summary").hidden = !show;
+  if (!show) return;
+  const cats = [...new Set(state.findings.map(f => f.category))];
+  $("sum-count").textContent = state.findings.length;
+  $("sum-cats").textContent = cats.length;
+  $("sum-lines").textContent = state.source.split(/\r?\n/).length;
+  $("sum-ms").textContent = state.scanMs;
+  $("sum-catbar").innerHTML = cats.map(c => `<span>${CATEGORIES[c]}</span>`).join("");
+}
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+/* ── Actions ───────────────────────────── */
+function loadSource(name, path, size, src) {
+  state.fileName = name;
+  state.filePath = path;
+  state.fileSize = size;
+  state.source = src;
+  state.findings = [];
+  state.selected = null;
+  state.filter = "all";
+  const pt = $("path-text");
+  pt.textContent = path;
+  pt.classList.remove("empty");
+  $("path-size").textContent = (size / 1024).toFixed(1) + " KB";
+  $("btn-scan").disabled = false;
+  $("btn-export").disabled = true;
+  renderSummary(false);
+  renderFilters();
+  renderFindings();
+  renderDetail();
+  setStatus("READY", `<b>${escapeHtml(name)}</b> 준비 완료 — 검거를 시작할 수 있습니다.`);
+}
+
+$("btn-pick").addEventListener("click", () => $("file-input").click());
+
+$("file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".py")) {
+    setStatus("ERROR", "Python 소스 파일(<b>.py</b>)만 분석할 수 있습니다. 다른 파일을 선택해주세요.");
+    $("btn-scan").disabled = true;
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => setStatus("ERROR", "파일을 읽는 중 문제가 발생했습니다. 인코딩(UTF-8)을 확인해주세요.");
+  reader.onload = () => loadSource(file.name, file.name, file.size, String(reader.result));
+  reader.readAsText(file, "utf-8");
+  e.target.value = "";
+});
+
+$("btn-sample").addEventListener("click", () => {
+  loadSource(SAMPLE_NAME, "samples/" + SAMPLE_NAME, new Blob([SAMPLE_SRC]).size, SAMPLE_SRC);
+  toast("샘플 파일을 불러왔습니다 — 검거를 시작해보세요");
+});
+
+$("btn-scan").addEventListener("click", () => {
+  if (!state.source) return;
+  const btn = $("btn-scan");
+  btn.disabled = true;
+  setStatus("SCANNING", "AST를 파싱하고 규칙 6종을 적용하는 중입니다… <span style='font-family:var(--font-mono);color:var(--faint)'>대상 코드는 실행되지 않습니다.</span>");
+  const t0 = performance.now();
+
+  setTimeout(() => {
+    try {
+      const { findings } = scan(state.source);
+      state.scanMs = Math.max(1, Math.round(performance.now() - t0));
+      state.findings = findings;
+      state.selected = findings[0] || null;
+      state.runs += 1;
+      $("stat-runs").textContent = state.runs;
+      renderSummary(true);
+      renderFilters();
+      renderFindings();
+      renderDetail();
+      $("btn-export").disabled = findings.length === 0;
+      if (findings.length) {
+        const cats = new Set(findings.map(f => f.category)).size;
+        setStatus("FOUND", `착한코드 <b>${findings.length}건</b>을 검거했습니다 · 카테고리 <b>${cats}개</b>`);
+      } else {
+        setStatus("NONE", "현재 규칙으로 확인할 수 있는 착한코드를 찾지 못했습니다. <b>이 결과가 코드가 취약하다는 뜻은 아닙니다.</b>");
+      }
+    } catch (err) {
+      state.findings = [];
+      state.selected = null;
+      renderSummary(false);
+      renderFilters();
+      renderFindings();
+      renderDetail();
+      $("btn-export").disabled = true;
+      setStatus("ERROR", err.userFacing ? escapeHtml(err.message) : "파일을 분석할 수 없습니다. 문법 오류나 인코딩 문제가 없는지 확인해주세요.");
+    } finally {
+      btn.disabled = false;
+    }
+  }, 420);
+});
+
+$("btn-export").addEventListener("click", () => {
+  const payload = {
+    schema: "good-code-hunter/scan-result",
+    version: "0.1",
+    generated_at: new Date().toISOString(),
+    target_file: state.filePath,
+    executed_target_code: false,
+    analysis: { engine: "ast-static", rules_applied: RULES.map(r => r.id), duration_ms: state.scanMs },
+    summary: {
+      finding_count: state.findings.length,
+      category_count: new Set(state.findings.map(f => f.category)).size
+    },
+    findings: state.findings,
+    disclaimer: "이 결과는 코드에서 발견된 긍정적인 보안 패턴을 보여주는 것이며, 해당 파일 전체에 취약점이 없음을 보증하지 않습니다."
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = state.fileName.replace(/\.py$/i, "") + "-goodcode.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("JSON 결과를 저장했습니다");
+});
+
+/* 초기 렌더 */
+renderFilters();
+renderFindings();
+renderDetail();
+setStatus("EMPTY", "Python 파일을 선택해주세요. 선택 전에는 분석을 시작할 수 없습니다.");
+</script>
+</body>
+</html>
