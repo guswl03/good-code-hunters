@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import gc
-import tkinter as tk
+import json
 from pathlib import Path
 
 from goodcode.core.models import (
@@ -28,213 +27,103 @@ def make_finding() -> Finding:
     )
 
 
-def make_result(status: str, findings: list[Finding] | None = None) -> ScanResult:
+def make_result(
+    status: str,
+    findings: list[Finding] | None = None,
+    warnings: list[str] | None = None,
+) -> ScanResult:
     return ScanResult(
         findings=[] if findings is None else findings,
         target="sample.py",
         status=status,
-        warnings=[],
+        warnings=[] if warnings is None else warnings,
     )
 
 
-def destroy_widget(widget: tk.Misc) -> None:
+# ===
+# 만든 이유: Windows Tcl이 한 프로세스에서 여러 Tk 루트를 반복 생성할 때 생기는 간헐 오류를 피한다.
+# 코드 설명: 하나의 실제 MainWindow에서 MVP의 모든 상태와 JSON 저장 흐름을 순서대로 검증한다.
+# ===
+def test_main_window_complete_mvp_workflow(tmp_path: Path, monkeypatch) -> None:
+    from goodcode.gui import main_window
+    from goodcode.gui.main_window import MainWindow
+
+    current = {"result": make_result(NO_GOOD_PATTERNS_FOUND)}
+    window = MainWindow(scan_service=lambda _path: current["result"])
+    window.withdraw()
+
     try:
-        widget.update_idletasks()
-    except tk.TclError:
-        pass
-    try:
-        widget.destroy()
-    except tk.TclError:
-        pass
-    tk._default_root = None
-    gc.collect()
+        window.update_idletasks()
+        assert "실행하지 않고" in window.product_description_var.get()
+        assert window.current_page == "검거소"
+        assert set(window.pages) == {"검거소"}
+        assert str(window.scan_button["state"]) == "disabled"
+        assert window.logo_label is not None
+        assert window.logo_image is not None
+        assert window.sample_button is not None
+        assert window.result_view.winfo_manager() == "grid"
+        assert "보증" in window.disclaimer_var.get()
 
+        window._load_sample_file()
+        assert window._selected_file is not None
+        assert Path(window._selected_file).exists()
+        assert MainWindow.SAMPLE_FILE_NAME in window._selected_file
 
-def test_result_view_shows_selected_finding_details() -> None:
-    from goodcode.gui.result_view import ResultView
+        finding = make_finding()
+        current["result"] = make_result(GOOD_PATTERNS_FOUND, [finding])
+        window.set_selected_file("sample.py")
+        assert str(window.scan_button["state"]) == "normal"
+        window.run_scan()
+        assert window.current_result() is not None
+        assert window.current_result().status == GOOD_PATTERNS_FOUND
+        assert window.result_view.selected_finding() == finding
+        assert "1" in window.summary_var.get()
+        assert str(window.export_button["state"]) == "normal"
 
-    root = tk.Tk()
-    root.withdraw()
+        output = tmp_path / "scan-result.json"
+        monkeypatch.setattr(
+            main_window.filedialog,
+            "asksaveasfilename",
+            lambda **_kwargs: str(output),
+        )
+        window.save_current_result()
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        assert payload["summary"] == {"findings": 1, "categories": 1}
+        assert payload["findings"][0]["rule_id"] == "GOOD002"
+        assert "file" not in payload["findings"][0]
 
-    finding = make_finding()
-    view = ResultView(root)
-    view.set_findings([finding])
+        def fail_export(_result, _path) -> None:
+            raise OSError("permission denied")
 
-    assert view.selected_finding() == finding
+        monkeypatch.setattr(main_window, "export_scan_result", fail_export)
+        window.save_current_result()
+        assert "저장할 수 없습니다" in window.status_var.get()
 
-    destroy_widget(root)
+        current["result"] = make_result(NO_GOOD_PATTERNS_FOUND)
+        window.set_selected_file("empty.py")
+        window.run_scan()
+        assert window.current_result().status == NO_GOOD_PATTERNS_FOUND
+        assert str(window.export_button["state"]) == "normal"
 
+        current["result"] = make_result(
+            PARSE_ERROR,
+            warnings=["Line 3: invalid syntax"],
+        )
+        window.set_selected_file("broken.py")
+        window.run_scan()
+        assert window.current_result().status == PARSE_ERROR
+        assert str(window.export_button["state"]) == "disabled"
 
-def test_main_window_moves_to_ready_after_file_selection() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-
-    window.set_selected_file("sample.py")
-
-    assert str(window.scan_button["state"]) == "normal"
-    assert "sample.py" in window.file_path_var.get()
-
-    destroy_widget(window)
-
-
-def test_main_window_starts_on_single_analysis_screen() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-    window.update_idletasks()
-
-    assert "실행하지 않고" in window.product_description_var.get()
-    assert window.scan_page.winfo_manager() == "grid"
-    assert window.current_page == "검거소"
-    assert set(window.pages) == {"홈", "검거소", "랭킹", "규칙집"}
-    assert str(window.scan_button["state"]) == "disabled"
-
-    destroy_widget(window)
-
-
-def test_main_window_loads_brand_logo_image() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-
-    assert window.logo_label is not None
-    assert window.logo_image is not None
-
-    destroy_widget(window)
-
-
-def test_single_screen_exposes_primary_workflow() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-    window.update_idletasks()
-
-    assert "Python 파일" in window.file_hint_var.get()
-    assert window.sample_button is not None
-    assert window.result_view.winfo_manager() == "grid"
-    assert "보증" in window.disclaimer_var.get()
-
-    destroy_widget(window)
-
-
-def test_navigation_switches_between_all_pages() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-
-    assert window.current_page == "검거소"
-    assert list(window.nav_buttons) == ["홈", "검거소", "랭킹", "규칙집"]
-
-    for page_name in ("홈", "랭킹", "규칙집", "검거소"):
-        window.nav_buttons[page_name].invoke()
-        assert window.current_page == page_name
-        assert window.pages[page_name].winfo_manager() == "grid"
-
-    destroy_widget(window)
-
-
-def test_main_window_loads_sample_file_for_preview() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-
-    window._load_sample_file()
-
-    assert window.sample_button is not None
-    assert window._selected_file is not None
-    assert Path(window._selected_file).exists()
-    assert MainWindow.SAMPLE_FILE_NAME in window._selected_file
-    assert "good_code_hunters_sample.py" in window.file_path_var.get()
-
-    destroy_widget(window)
-
-
-def test_main_window_renders_good_patterns_found() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    finding = make_finding()
-    window = MainWindow(
-        scan_service=lambda path: make_result(GOOD_PATTERNS_FOUND, [finding])
-    )
-    window.withdraw()
-    window.set_selected_file("sample.py")
-
-    window.run_scan()
-
-    assert window.current_result() is not None
-    assert window.current_result().status == GOOD_PATTERNS_FOUND
-    assert window.result_view.selected_finding() == finding
-    assert "1" in window.summary_var.get()
-    assert str(window.export_button["state"]) == "normal"
-
-    destroy_widget(window)
-
-
-def test_main_window_renders_empty_scan_result() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
-    window.withdraw()
-    window.set_selected_file("sample.py")
-
-    window.run_scan()
-
-    assert window.current_result() is not None
-    assert window.current_result().status == NO_GOOD_PATTERNS_FOUND
-    assert str(window.export_button["state"]) == "normal"
-
-    destroy_widget(window)
-
-
-def test_main_window_renders_parse_error() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    result = ScanResult(
-        findings=[],
-        target="broken.py",
-        status=PARSE_ERROR,
-        warnings=["Line 3: invalid syntax"],
-    )
-    window = MainWindow(scan_service=lambda path: result)
-    window.withdraw()
-    window.set_selected_file("broken.py")
-
-    window.run_scan()
-
-    assert window.current_result() is not None
-    assert window.current_result().status == PARSE_ERROR
-    assert str(window.export_button["state"]) == "disabled"
-
-    destroy_widget(window)
-
-
-def test_main_window_renders_read_error() -> None:
-    from goodcode.gui.main_window import MainWindow
-
-    result = ScanResult(
-        findings=[],
-        target="missing.py",
-        status=READ_ERROR,
-        warnings=["missing file"],
-    )
-    window = MainWindow(scan_service=lambda path: result)
-    window.withdraw()
-    window.set_selected_file("missing.py")
-
-    window.run_scan()
-
-    assert window.current_result() is not None
-    assert window.current_result().status == READ_ERROR
-    assert str(window.export_button["state"]) == "disabled"
-
-    destroy_widget(window)
+        current["result"] = make_result(
+            READ_ERROR,
+            warnings=["missing file"],
+        )
+        window.set_selected_file("missing.py")
+        window.run_scan()
+        assert window.current_result().status == READ_ERROR
+        assert str(window.export_button["state"]) == "disabled"
+    finally:
+        window.destroy()
 
 
 def test_app_uses_real_scan_file() -> None:

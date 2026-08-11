@@ -190,6 +190,19 @@ def test_scan_file_returns_read_error_status_for_missing_file(
     assert result.warnings
 
 
+def test_scan_file_returns_read_error_for_invalid_utf8(tmp_path: Path) -> None:
+    replace_rules([])
+    target = tmp_path / "invalid_utf8.py"
+    target.write_bytes(b"\xff\xfe\x00")
+
+    result = scan_file(str(target))
+
+    assert result.target == str(target)
+    assert result.status == READ_ERROR
+    assert result.findings == []
+    assert result.warnings
+
+
 def test_scan_file_returns_read_error_status_for_non_python_input(
     tmp_path: Path,
 ) -> None:

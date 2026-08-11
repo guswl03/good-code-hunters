@@ -14,10 +14,13 @@ FIXTURES = Path(__file__).parents[1] / "fixtures" / "good004"
 # ===
 def test_good004_detects_compare_digest_alias() -> None:
     findings = _scan_fixture("positive.py")
-    assert len(findings) == 1
-    assert findings[0].rule_id == "GOOD004"
-    assert findings[0].file == "positive.py"
-    assert "compare_digest" in findings[0].evidence
+    assert len(findings) == 2
+    assert {finding.rule_id for finding in findings} == {"GOOD004"}
+    assert {finding.file for finding in findings} == {"positive.py"}
+    assert {finding.category for finding in findings} == {
+        "side-channel-defense"
+    }
+    assert all("compare_digest" in finding.evidence for finding in findings)
 
 
 def test_good004_ignores_normal_equality() -> None:

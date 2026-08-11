@@ -82,14 +82,27 @@ GOOD007(Secure TLS Context), GOOD008(Secure Temporary File API)은 P0 완료 후
 
 ## 실행·테스트·빌드
 
-현재 저장소는 하네스 명세를 확정한 초기 단계입니다. 구현이 추가되면 명세에 정의된 다음 명령을 사용합니다.
+Python 3.11 이상 환경에서 개발 의존성을 설치합니다.
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+GUI 실행과 자동 검증 명령은 다음과 같습니다.
 
 ```bash
 python app.py
-pytest -q
-ruff check .
-pyinstaller --noconfirm --windowed --onedir --name GoodCodeHunter app.py
+python -m pytest -q
+python -m ruff check .
 ```
+
+Windows onedir 배포본은 로고 리소스가 포함된 고정 명세로 빌드합니다.
+
+```bash
+pyinstaller --noconfirm GoodCodeHunter.spec
+```
+
+빌드 산출물은 `dist/GoodCodeHunter/GoodCodeHunter.exe`에 생성됩니다.
 
 빌드 후에는 배포 폴더의 실행 파일에서 `.py` 파일 선택, 분석, Finding 상세 확인, JSON 저장, 재분석을 직접 확인합니다.
 

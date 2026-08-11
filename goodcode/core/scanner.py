@@ -40,7 +40,7 @@ def _sorted_findings(findings: list[Finding]) -> list[Finding]:
 def scan_path(path: Path) -> ScanResult:
     try:
         source = read_python_source(path)
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return ScanResult(
             findings=[],
             target=str(path),

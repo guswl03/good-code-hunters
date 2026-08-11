@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -15,27 +13,18 @@ from goodcode.core.models import (
     READ_ERROR,
     ScanResult,
 )
-from goodcode.gui.home_page import HomePage
-from goodcode.gui.ranking_page import RankingPage
+from goodcode.exporters import export_scan_result
 from goodcode.gui.result_view import ResultView
-from goodcode.gui.rulebook_page import RulebookPage
 
 
-def _ensure_tk_library_paths() -> None:
-    base_path = Path(sys.base_prefix)
-    candidates = (
-        (base_path / "tcl" / "tcl8.6", base_path / "tcl" / "tk8.6"),
-        (
-            base_path / "Library" / "lib" / "tcl8.6",
-            base_path / "Library" / "lib" / "tk8.6",
-        ),
-    )
-
-    for tcl_path, tk_path in candidates:
-        if (tcl_path / "init.tcl").exists() and (tk_path / "tk.tcl").exists():
-            os.environ["TCL_LIBRARY"] = str(tcl_path)
-            os.environ["TK_LIBRARY"] = str(tk_path)
-            return
+# ===
+# 만든 이유: 소스 실행 위치와 PyInstaller 임시 실행 위치 모두에서 로고를 찾기 위해 필요하다.
+# 코드 설명: frozen 실행이면 _MEIPASS, 개발 실행이면 저장소 루트를 기준으로 리소스 경로를 만든다.
+# ===
+def _resource_path(relative_path: str) -> Path:
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    base_path = Path(frozen_root) if frozen_root else Path(__file__).resolve().parents[2]
+    return base_path / relative_path
 
 
 class MainWindow(tk.Tk):
@@ -67,7 +56,6 @@ config = yaml.safe_load("safe: true")
 """
 
     def __init__(self, scan_service) -> None:
-        _ensure_tk_library_paths()
         super().__init__()
         self._scan_service = scan_service
         self._selected_file: str | None = None
@@ -96,7 +84,6 @@ config = yaml.safe_load("safe: true")
             )
         )
 
-        self.nav_buttons: dict[str, ttk.Button] = {}
         self.pages: dict[str, ttk.Frame] = {}
         self.current_page = "검거소"
         self.logo_image: tk.PhotoImage | None = None
@@ -178,10 +165,17 @@ config = yaml.safe_load("safe: true")
         if not file_path:
             return
 
-        Path(file_path).write_text(
-            json.dumps(self._result.to_dict(), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        # ===
+        # 만든 이유: GUI와 Golden Test가 동일한 PRD JSON 계약을 사용해야 한다.
+        # 코드 설명: GUI는 저장 위치만 선택하고 UTF-8 직렬화는 D의 Exporter에 맡긴다.
+        # ===
+        try:
+            export_scan_result(self._result, file_path)
+        except OSError:
+            self._set_state(
+                "ERROR",
+                "JSON 결과를 저장할 수 없습니다. 저장 위치와 권한을 확인해주세요.",
+            )
 
     def _configure_styles(self) -> None:
         style = ttk.Style(self)
@@ -411,18 +405,6 @@ config = yaml.safe_load("safe: true")
             row=0, column=2, sticky="w", padx=(8, 0)
         )
 
-        nav = ttk.Frame(topbar, style="Topbar.TFrame")
-        nav.grid(row=0, column=1, sticky="w", padx=(28, 0))
-        for name in ("홈", "검거소", "랭킹", "규칙집"):
-            button = ttk.Button(
-                nav,
-                text=name,
-                style="Topnav.TButton",
-                command=lambda item=name: self._show_page(item),
-            )
-            button.pack(side="left", padx=(0, 6))
-            self.nav_buttons[name] = button
-
         ttk.Label(
             topbar,
             text="STATIC · 대상 코드는 실행하지 않음",
@@ -430,7 +412,7 @@ config = yaml.safe_load("safe: true")
         ).grid(row=0, column=2, sticky="e")
 
     def _create_logo_label(self, parent: ttk.Frame) -> tk.Label:
-        logo_path = Path("assets/branding/good-code-hunters-logo.png")
+        logo_path = _resource_path("assets/branding/good-code-hunters-logo.png")
         if logo_path.exists():
             try:
                 original = tk.PhotoImage(file=str(logo_path))
@@ -478,12 +460,11 @@ config = yaml.safe_load("safe: true")
         self.scan_page = content
 
     def _init_pages(self) -> None:
-        self.pages = {
-            "홈": HomePage(self.page_container),
-            "검거소": self.scan_page,
-            "랭킹": RankingPage(self.page_container),
-            "규칙집": RulebookPage(self.page_container),
-        }
+        # ===
+        # 만든 이유: PRD는 핵심 흐름을 하나의 메인 화면에서 처리하도록 요구한다.
+        # 코드 설명: 분석 화면만 등록해 랭킹·티어 등 MVP 밖 기능이 production에 노출되지 않게 한다.
+        # ===
+        self.pages = {"검거소": self.scan_page}
 
     def _show_page(self, name: str) -> None:
         page = self.pages.get(name)
@@ -496,32 +477,12 @@ config = yaml.safe_load("safe: true")
         page.tkraise()
         self.current_page = name
 
-        page_copy = {
-            "홈": (
-                "착한코드검거단",
-                "좋은 보안 패턴을 근거 코드와 함께 찾아주는 Python 정적 분석 도구입니다.",
-            ),
-            "검거소": (
-                "Python 보안 패턴 분석",
-                "Python 코드를 실행하지 않고 좋은 보안 패턴을 찾는 정적 분석기입니다.",
-            ),
-            "랭킹": (
-                "착한코드 랭킹",
-                "분석 기록과 샘플 사용자 순위를 확인합니다.",
-            ),
-            "규칙집": (
-                "탐지 규칙집",
-                "현재 지원하는 좋은 보안 패턴과 탐지 기준을 확인합니다.",
-            ),
-        }
-        title, description = page_copy[name]
+        title, description = (
+            "Python 보안 패턴 분석",
+            "Python 코드를 실행하지 않고 좋은 보안 패턴을 찾는 정적 분석기입니다.",
+        )
         self.page_title_var.set(title)
         self.product_description_var.set(description)
-
-        for button_name, button in self.nav_buttons.items():
-            button.configure(
-                style="TopnavActive.TButton" if button_name == name else "Topnav.TButton"
-            )
 
     def _build_upload_panel(self, parent: ttk.Frame) -> None:
         panel = ttk.Frame(parent, padding=16, style="Card.TFrame")
