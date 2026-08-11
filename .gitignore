@@ -12,6 +12,8 @@ build/
 dist/
 *.egg-info/
 .omx/
+.claude
+
 
 docs/superpowers/
 temp_harness/

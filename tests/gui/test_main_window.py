@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import gc
-from pathlib import Path
 import tkinter as tk
+from pathlib import Path
 
 from goodcode.core.models import (
     GOOD_PATTERNS_FOUND,
@@ -79,15 +79,18 @@ def test_main_window_moves_to_ready_after_file_selection() -> None:
     destroy_widget(window)
 
 
-def test_main_window_uses_scan_page_shell_structure() -> None:
+def test_main_window_starts_on_single_analysis_screen() -> None:
     from goodcode.gui.main_window import MainWindow
 
     window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
     window.withdraw()
+    window.update_idletasks()
 
-    assert window.page_title_var.get() == "검거소"
-    assert list(window.nav_buttons) == ["홈", "검거소", "랭킹", "규칙집"]
-    assert str(window.nav_buttons["검거소"]["state"]) == "disabled"
+    assert "실행하지 않고" in window.product_description_var.get()
+    assert window.scan_page.winfo_manager() == "grid"
+    assert window.current_page == "검거소"
+    assert set(window.pages) == {"홈", "검거소", "랭킹", "규칙집"}
+    assert str(window.scan_button["state"]) == "disabled"
 
     destroy_widget(window)
 
@@ -100,6 +103,38 @@ def test_main_window_loads_brand_logo_image() -> None:
 
     assert window.logo_label is not None
     assert window.logo_image is not None
+
+    destroy_widget(window)
+
+
+def test_single_screen_exposes_primary_workflow() -> None:
+    from goodcode.gui.main_window import MainWindow
+
+    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
+    window.withdraw()
+    window.update_idletasks()
+
+    assert "Python 파일" in window.file_hint_var.get()
+    assert window.sample_button is not None
+    assert window.result_view.winfo_manager() == "grid"
+    assert "보증" in window.disclaimer_var.get()
+
+    destroy_widget(window)
+
+
+def test_navigation_switches_between_all_pages() -> None:
+    from goodcode.gui.main_window import MainWindow
+
+    window = MainWindow(scan_service=lambda path: make_result(NO_GOOD_PATTERNS_FOUND))
+    window.withdraw()
+
+    assert window.current_page == "검거소"
+    assert list(window.nav_buttons) == ["홈", "검거소", "랭킹", "규칙집"]
+
+    for page_name in ("홈", "랭킹", "규칙집", "검거소"):
+        window.nav_buttons[page_name].invoke()
+        assert window.current_page == page_name
+        assert window.pages[page_name].winfo_manager() == "grid"
 
     destroy_widget(window)
 

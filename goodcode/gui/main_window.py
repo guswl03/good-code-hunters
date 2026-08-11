@@ -6,7 +6,7 @@ import sys
 import tkinter as tk
 from pathlib import Path
 from tempfile import gettempdir
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 
 from goodcode.core.models import (
     GOOD_PATTERNS_FOUND,
@@ -15,7 +15,10 @@ from goodcode.core.models import (
     READ_ERROR,
     ScanResult,
 )
+from goodcode.gui.home_page import HomePage
+from goodcode.gui.ranking_page import RankingPage
 from goodcode.gui.result_view import ResultView
+from goodcode.gui.rulebook_page import RulebookPage
 
 
 def _ensure_tk_library_paths() -> None:
@@ -75,22 +78,35 @@ config = yaml.safe_load("safe: true")
         self.minsize(1220, 760)
         self.configure(bg="#f4f7f6")
 
-        self.page_title_var = tk.StringVar(value="검거소")
+        self.page_title_var = tk.StringVar(value="Python 보안 패턴 분석")
+        self.product_description_var = tk.StringVar(
+            value="Python 코드를 실행하지 않고 좋은 보안 패턴을 찾는 정적 분석기입니다."
+        )
         self.file_path_var = tk.StringVar(value="아직 선택된 파일이 없습니다.")
         self.file_hint_var = tk.StringVar(
-            value="코드는 이 앱 안에서만 읽히며 실행되지 않습니다."
+            value="Python 파일 하나를 선택하세요. 코드는 읽기만 하며 실행하지 않습니다."
         )
         self.status_var = tk.StringVar(value="Python 파일을 선택해주세요.")
         self.summary_var = tk.StringVar(value="0 findings · 0 categories · 0 lines")
         self._status_badge_var = tk.StringVar(value="EMPTY")
+        self.disclaimer_var = tk.StringVar(
+            value=(
+                "이 결과는 확인 가능한 좋은 보안 패턴만 보여줍니다. "
+                "파일 전체에 취약점이 없음을 보증하지 않습니다."
+            )
+        )
 
         self.nav_buttons: dict[str, ttk.Button] = {}
+        self.pages: dict[str, ttk.Frame] = {}
+        self.current_page = "검거소"
         self.logo_image: tk.PhotoImage | None = None
         self.logo_label: tk.Label | None = None
         self.sample_button: ttk.Button | None = None
 
         self._configure_styles()
         self._build_layout()
+        self._init_pages()
+        self._show_page("검거소")
         self._set_state("EMPTY", "Python 파일을 선택해주세요.")
 
     def current_result(self) -> ScanResult | None:
@@ -110,7 +126,7 @@ config = yaml.safe_load("safe: true")
             self._set_state("EMPTY", "Python 파일을 먼저 선택해주세요.")
             return
 
-        self._set_state("SCANNING", "AST 기반 정적 분석으로 규칙을 적용하는 중입니다.")
+        self._set_state("SCANNING", "AST 기반 정적 분석으로 규칙 6종을 적용하는 중입니다.")
         self.update_idletasks()
 
         result = self._scan_service(self._selected_file)
@@ -127,9 +143,7 @@ config = yaml.safe_load("safe: true")
             return
 
         if result.status == NO_GOOD_PATTERNS_FOUND:
-            self.result_view.show_empty(
-                "현재 규칙 기준으로 확인 가능한 착한코드를 찾지 못했습니다."
-            )
+            self.result_view.show_empty("현재 규칙 기준으로 확인 가능한 착한코드가 없습니다.")
             self._set_state(
                 "SUCCESS_EMPTY",
                 "분석은 정상 종료되었지만 표시할 착한코드는 없습니다.",
@@ -367,15 +381,18 @@ config = yaml.safe_load("safe: true")
         outer.grid(row=0, column=0, sticky="nsew")
         outer.columnconfigure(0, weight=1)
         outer.rowconfigure(0, weight=1)
-
         center = ttk.Frame(outer, style="Page.TFrame")
-        center.grid(row=0, column=0, sticky="n")
+        center.grid(row=0, column=0, sticky="nsew")
         center.columnconfigure(0, weight=1)
         center.rowconfigure(2, weight=1)
 
         self._build_topbar(center)
         self._build_page_header(center)
-        self._build_content(center)
+        self.page_container = ttk.Frame(center, style="Page.TFrame")
+        self.page_container.grid(row=2, column=0, sticky="nsew")
+        self.page_container.columnconfigure(0, weight=1)
+        self.page_container.rowconfigure(0, weight=1)
+        self._build_content(self.page_container)
         self._build_footer(center)
 
     def _build_topbar(self, parent: ttk.Frame) -> None:
@@ -400,11 +417,9 @@ config = yaml.safe_load("safe: true")
             button = ttk.Button(
                 nav,
                 text=name,
-                style="TopnavActive.TButton" if name == "검거소" else "Topnav.TButton",
-                command=lambda item=name: self._show_placeholder(item),
+                style="Topnav.TButton",
+                command=lambda item=name: self._show_page(item),
             )
-            if name == "검거소":
-                button.configure(state="disabled")
             button.pack(side="left", padx=(0, 6))
             self.nav_buttons[name] = button
 
@@ -414,31 +429,12 @@ config = yaml.safe_load("safe: true")
             style="StatusBadge.TLabel",
         ).grid(row=0, column=2, sticky="e")
 
-        self.nav_underline = tk.Frame(topbar, bg="#0f7568", height=2)
-        topbar.update_idletasks()
-        self._place_nav_underline()
-
-    def _place_nav_underline(self) -> None:
-        active_button = self.nav_buttons.get("검거소")
-        if not active_button:
-            return
-
-        active_button.update_idletasks()
-        self.nav_underline.place(
-            in_=active_button,
-            x=10,
-            rely=1.0,
-            y=-1,
-            width=max(24, active_button.winfo_width() - 20),
-            height=2,
-        )
-
     def _create_logo_label(self, parent: ttk.Frame) -> tk.Label:
         logo_path = Path("assets/branding/good-code-hunters-logo.png")
         if logo_path.exists():
             try:
                 original = tk.PhotoImage(file=str(logo_path))
-                scale = max(1, original.width() // 138)
+                scale = max(1, max(original.width(), original.height()) // 42)
                 self.logo_image = original.subsample(scale, scale)
                 return tk.Label(parent, image=self.logo_image, bg="#ffffff", bd=0)
             except tk.TclError:
@@ -456,29 +452,79 @@ config = yaml.safe_load("safe: true")
     def _build_page_header(self, parent: ttk.Frame) -> None:
         header = ttk.Frame(parent, padding=(6, 18, 6, 16), style="Page.TFrame")
         header.grid(row=1, column=0, sticky="ew")
-        ttk.Label(header, text="홈 / 검거소", style="PageKicker.TLabel").pack(anchor="w")
+        ttk.Label(
+            header,
+            text="코드를 실행하지 않는 AST 정적 분석",
+            style="PageKicker.TLabel",
+        ).pack(anchor="w")
         ttk.Label(header, textvariable=self.page_title_var, style="Title.TLabel").pack(
             anchor="w", pady=(6, 4)
         )
         ttk.Label(
             header,
-            text="Python 파일 하나를 실행하지 않고 정적으로 분석해 확인 가능한 보안 패턴을 찾습니다.",
+            textvariable=self.product_description_var,
             style="Subtitle.TLabel",
         ).pack(anchor="w")
 
     def _build_content(self, parent: ttk.Frame) -> None:
         content = ttk.Frame(parent, style="Page.TFrame")
-        content.grid(row=2, column=0, sticky="nsew")
-        content.columnconfigure(0, weight=3)
-        content.columnconfigure(1, weight=2)
+        content.grid(row=0, column=0, sticky="nsew")
+        content.columnconfigure(0, weight=1)
         content.rowconfigure(1, weight=1)
 
         self._build_upload_panel(content)
         self._build_results_panel(content)
         self._build_disclaimer(content)
+        self.scan_page = content
+
+    def _init_pages(self) -> None:
+        self.pages = {
+            "홈": HomePage(self.page_container),
+            "검거소": self.scan_page,
+            "랭킹": RankingPage(self.page_container),
+            "규칙집": RulebookPage(self.page_container),
+        }
+
+    def _show_page(self, name: str) -> None:
+        page = self.pages.get(name)
+        if page is None:
+            return
+
+        for candidate in self.pages.values():
+            candidate.grid_remove()
+        page.grid(row=0, column=0, sticky="nsew")
+        page.tkraise()
+        self.current_page = name
+
+        page_copy = {
+            "홈": (
+                "착한코드검거단",
+                "좋은 보안 패턴을 근거 코드와 함께 찾아주는 Python 정적 분석 도구입니다.",
+            ),
+            "검거소": (
+                "Python 보안 패턴 분석",
+                "Python 코드를 실행하지 않고 좋은 보안 패턴을 찾는 정적 분석기입니다.",
+            ),
+            "랭킹": (
+                "착한코드 랭킹",
+                "분석 기록과 샘플 사용자 순위를 확인합니다.",
+            ),
+            "규칙집": (
+                "탐지 규칙집",
+                "현재 지원하는 좋은 보안 패턴과 탐지 기준을 확인합니다.",
+            ),
+        }
+        title, description = page_copy[name]
+        self.page_title_var.set(title)
+        self.product_description_var.set(description)
+
+        for button_name, button in self.nav_buttons.items():
+            button.configure(
+                style="TopnavActive.TButton" if button_name == name else "Topnav.TButton"
+            )
 
     def _build_upload_panel(self, parent: ttk.Frame) -> None:
-        panel = ttk.Frame(parent, padding=22, style="Card.TFrame")
+        panel = ttk.Frame(parent, padding=16, style="Card.TFrame")
         panel.grid(row=0, column=0, sticky="ew", padx=(0, 16), pady=(0, 16))
         panel.columnconfigure(0, weight=1)
 
@@ -501,45 +547,36 @@ config = yaml.safe_load("safe: true")
             style="PanelCount.TLabel",
         ).pack(side="left")
 
-        drop = ttk.Frame(panel, padding=16, style="SoftCard.TFrame")
-        drop.grid(row=1, column=0, sticky="ew", pady=(14, 0))
-        drop.columnconfigure(1, weight=1)
-        ttk.Label(drop, text=".py", style="FileBadge.TLabel").grid(
+        file_row = ttk.Frame(panel, padding=(14, 11), style="SoftCard.TFrame")
+        file_row.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        file_row.columnconfigure(1, weight=1)
+        ttk.Label(file_row, text=".py", style="FileBadge.TLabel").grid(
             row=0, column=0, rowspan=2, sticky="nw", padx=(0, 12)
         )
         ttk.Label(
-            drop,
-            text="Python 파일을 선택해주세요.",
+            file_row,
+            textvariable=self.file_path_var,
             style="StrongBody.TLabel",
+            wraplength=760,
+            justify="left",
         ).grid(row=0, column=1, sticky="w")
         ttk.Label(
-            drop,
+            file_row,
             textvariable=self.file_hint_var,
             style="Body.TLabel",
-            wraplength=680,
+            wraplength=760,
             justify="left",
         ).grid(row=1, column=1, sticky="ew", pady=(4, 0))
         ttk.Button(
-            drop,
+            file_row,
             text="파일 선택",
             style="Ghost.TButton",
             command=self._choose_file,
         ).grid(row=0, column=2, rowspan=2, sticky="e", padx=(14, 0))
 
-        path_bar = ttk.Frame(panel, padding=(12, 10), style="SoftCard.TFrame")
-        path_bar.grid(row=2, column=0, sticky="ew", pady=(10, 0))
-        path_bar.columnconfigure(0, weight=1)
-        ttk.Label(
-            path_bar,
-            textvariable=self.file_path_var,
-            style="Body.TLabel",
-            wraplength=780,
-            justify="left",
-        ).grid(row=0, column=0, sticky="ew")
-
         action_row = ttk.Frame(panel, style="Card.TFrame")
-        action_row.grid(row=3, column=0, sticky="ew", pady=(12, 0))
-        action_row.columnconfigure(2, weight=1)
+        action_row.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        action_row.columnconfigure(3, weight=1)
         self.scan_button = ttk.Button(
             action_row,
             text="착한코드 검거 시작",
@@ -552,23 +589,19 @@ config = yaml.safe_load("safe: true")
             text="ast.parse() · AST 순회만 수행",
             style="PanelCount.TLabel",
         ).grid(row=0, column=1, sticky="w", padx=(12, 0))
-
-        status_row = ttk.Frame(panel, style="Card.TFrame")
-        status_row.grid(row=4, column=0, sticky="ew", pady=(12, 0))
-        status_row.columnconfigure(1, weight=1)
         self.status_badge = ttk.Label(
-            status_row,
+            action_row,
             textvariable=self._status_badge_var,
             style="StatusBadge.TLabel",
         )
-        self.status_badge.grid(row=0, column=0, sticky="w")
+        self.status_badge.grid(row=0, column=2, sticky="e", padx=(18, 0))
         ttk.Label(
-            status_row,
+            action_row,
             textvariable=self.status_var,
             style="Body.TLabel",
-            wraplength=760,
+            wraplength=440,
             justify="left",
-        ).grid(row=0, column=1, sticky="ew", padx=(10, 0))
+        ).grid(row=0, column=3, sticky="ew", padx=(10, 0))
 
     def _build_results_panel(self, parent: ttk.Frame) -> None:
         left_stack = ttk.Frame(parent, style="Page.TFrame")
@@ -626,10 +659,7 @@ config = yaml.safe_load("safe: true")
         )
         ttk.Label(
             disclaimer,
-            text=(
-                "이 결과는 현재 규칙으로 확인된 긍정적 보안 패턴만 보여줍니다. "
-                "파일 전체에 취약점이 없음을 보증하지 않으며, 결과가 없다고 해서 코드가 취약하다는 뜻도 아닙니다."
-            ),
+            textvariable=self.disclaimer_var,
             style="Disclaimer.TLabel",
             wraplength=830,
             justify="left",
@@ -640,7 +670,7 @@ config = yaml.safe_load("safe: true")
         footer.grid(row=3, column=0, sticky="ew")
         ttk.Label(
             footer,
-            text="착한코드검거단 MVP v0.1 · 홈 · 검거소 · 랭킹 · 규칙집",
+            text="착한코드검거단 MVP v0.1 · AST 정적 분석 · No Execution",
             style="Footer.TLabel",
         ).pack(anchor="w")
 
@@ -656,12 +686,6 @@ config = yaml.safe_load("safe: true")
         sample_path = Path(gettempdir()) / self.SAMPLE_FILE_NAME
         sample_path.write_text(self.SAMPLE_SOURCE, encoding="utf-8")
         self.set_selected_file(str(sample_path))
-
-    def _show_placeholder(self, item: str) -> None:
-        messagebox.showinfo(
-            "준비 중",
-            f"{item} 화면 감성은 반영하지만, 현재 MVP 동작 화면은 검거소 중심입니다.",
-        )
 
     def _set_state(self, state: str, message: str) -> None:
         badge_map = {
