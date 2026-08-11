@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "0.1.0",
+  "target": "sample.py",
+  "status": "GOOD_PATTERNS_FOUND",
+  "summary": {
+    "findings": 2,
+    "categories": 1
+  },
+  "findings": [
+    {
+      "rule_id": "GOOD004",
+      "name": "Constant-Time Secret Comparison",
+      "category": "cryptography",
+      "confidence": "HIGH",
+      "line": 4,
+      "column": 4,
+      "evidence": "hmac.compare_digest(received, expected)",
+      "message": "비밀값 비교에 일정 시간 비교 함수를 사용하고 있습니다."
+    },
+    {
+      "rule_id": "GOOD004",
+      "name": "Constant-Time Secret Comparison",
+      "category": "cryptography",
+      "confidence": "HIGH",
+      "line": 8,
+      "column": 4,
+      "evidence": "hmac.compare_digest(left, right)",
+      "message": "비밀값 비교에 일정 시간 비교 함수를 사용하고 있습니다."
+    }
+  ],
+  "warnings": []
+}
