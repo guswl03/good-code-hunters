@@ -1,3 +1,3 @@
 import subprocess
 
-subprocess.run("git status", shell=True)
+subprocess.run("git status", shell=True, check=False)

@@ -6,6 +6,11 @@ from goodcode.core.import_resolver import ImportAliasContext
 from goodcode.core.models import Finding
 from goodcode.core.source import SourceHelper
 
+CONSTANT_TIME_APIS = {
+    "hmac.compare_digest",
+    "secrets.compare_digest",
+}
+
 
 # ===
 # 만든 이유: 비밀값 비교에 일반 동등 비교 대신 일정 시간 비교 API를 사용한 근거를 찾기 위해 만든 규칙이다.
@@ -27,19 +32,19 @@ class ConstantTimeComparisonRule:
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
-            if _resolved_call_name(node.func, imports) != "hmac.compare_digest":
+            if _resolved_call_name(node.func, imports) not in CONSTANT_TIME_APIS:
                 continue
             findings.append(
                 Finding(
                     rule_id=self.rule_id,
                     name="Constant-Time Secret Comparison",
-                    category="cryptography",
+                    category="side-channel-defense",
                     confidence="HIGH",
                     file=self.target_file,
                     line=node.lineno,
                     column=source.column_for_node(node),
                     evidence=source.snippet_for_node(node),
-                    message="비밀값 비교에 일정 시간 비교 함수 hmac.compare_digest()를 사용하고 있습니다.",
+                    message="비밀값 비교에 일정 시간 비교 API compare_digest()를 사용하고 있습니다.",
                 )
             )
         return findings

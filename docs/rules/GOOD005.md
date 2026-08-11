@@ -11,5 +11,5 @@ subprocess.run(["git", "status"], check=True)
 
 첫 인자가 문자열이거나 `shell=True`, `shell=변수`, `**kwargs`처럼 shell 미사용을 확정할 수 없는 경우는 탐지하지 않는다.
 
-category: `process-security`
+category: `command-execution`
 confidence: `HIGH`

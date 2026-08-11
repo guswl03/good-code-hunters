@@ -44,7 +44,7 @@ class SaferSubprocessInvocationRule:
                 Finding(
                     rule_id=self.rule_id,
                     name="Safer Subprocess Invocation",
-                    category="process-security",
+                    category="command-execution",
                     confidence="HIGH",
                     file=self.target_file,
                     line=node.lineno,
